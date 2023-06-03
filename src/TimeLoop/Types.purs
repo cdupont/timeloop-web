@@ -2,6 +2,7 @@
 
 module TimeLoop.Types where
 
+import Prelude
 import Data.Eq
 import Data.Ord
 import Data.Enum
@@ -106,17 +107,20 @@ initSource = { pos: {x:0, y:0}, time:0, dir:E}
 --portal1 :: Portal
 --portal1 = Portal (Sink (PTD (Pos 0 0) 0 S)) (Source (PTD (Pos 1 0) 1 W))
 --
-----No solution (self deviating)
---univ1 :: Univ
---univ1 = Univ {portals = [Portal {entry = Sink {unSink = PTD {pos = Pos {x = 6, y = 0}, time = 6, dir = E}}, exit = Source {unSource = PTD {pos = Pos {x = 3, y = 3}, time = 0, dir = S}}}], emitters = [Source {unSource = PTD {pos = Pos {x = 0, y = 0}, time = 0, dir = E}}], consumers = []}
---
-----two solutions: going straight or going through portal
---univ2 :: Univ
---univ2 = Univ
---  [Portal (Sink (PTD (Pos 3 (-3)) 6 S)) (Source (PTD (Pos 6 0) 0 W))]
---  [Source (PTD (Pos 0 0) 0 E)]
---  []
---
+--No solution (self deviating)
+univ1 :: Univ
+univ1 = {portals : [{entry : {pos : {x : 6, y : 0}, time : 6, dir : E}, 
+                     exit : {pos : {x : 3, y : 3}, time : 0, dir : S}}], 
+         emitters : [{pos : {x : 0, y : 0}, time : 0, dir : E}], 
+         consumers : []}
+
+-- two solutions: going straight or going through portal
+univ2 :: Univ
+univ2 = {portals : [{entry : {pos : {x : 3, y : -3}, time : 6, dir : S},
+                     exit : {pos : {x : 6, y : 0}, time : 0, dir : W}}],
+         emitters : [{pos : {x : 0, y : 0}, time : 0, dir : E}],
+         consumers : []}
+
 ---- The Djinn
 --univ3 :: Univ
 --univ3 = Univ {portals = [Portal {entry = Sink {unSink = PTD {pos = Pos {x = 6, y = 0}, time = 6, dir = E}}, exit = Source {unSource = PTD {pos = Pos {x = 0, y = 0}, time = 0, dir = E}}}], emitters = [], consumers = []}
