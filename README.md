@@ -3,5 +3,7 @@ Install
 =======
 
 ```
-cargo build
+spago bundle-app
 ```
+
+Game is available by openning test.html
