@@ -49,7 +49,7 @@ type Config = {
 
 main :: Effect Unit
 main = void $ unsafePartial do
-  log $ show $ getValidSTBlocks univ2
+  log $ show $ univ2
   HA.runHalogenAff do
     body <- HA.awaitBody
     runUI component unit body

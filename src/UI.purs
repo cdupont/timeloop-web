@@ -10,7 +10,7 @@ import Effect.Aff.Class (class MonadAff)
 import Effect.Class (liftEffect)
 import Halogen as H
 import Halogen.Aff as HA
-import Halogen.HTML as HH
+import Halogen.HTML as HH 
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.VDom.Driver (runUI)
@@ -20,6 +20,8 @@ import Data.Newtype (class Newtype)
 import Data.Maybe
 import Data.Map as M
 import Data.Tuple (Tuple(..))
+import Data.Array
+import Data.Int
 import Data.Traversable (sequence, traverse_)
 import Graphics.Canvas (rect, fillPath, setFillStyle, getContext2D,
                         getCanvasElementById, Context2D, fillRect)
@@ -28,6 +30,7 @@ import Halogen.Svg.Attributes (Color(..))
 import Halogen.Svg.Attributes as SA
 import Halogen.Svg.Elements as SE
 import Halogen.Svg.Attributes.Transform as SAT
+import Record
 
 data ItemType = EntryPortal | ExitPortal | Entry | Exit | Walker_
 
@@ -35,9 +38,9 @@ type Item = {
   itemType :: ItemType,
   time :: Time,
   dir :: Dir,
-  sel :: Maybe Boolean,
-  high :: Maybe Boolean,
-  col  :: Maybe Int}
+  sel :: Maybe Boolean,  --selected item
+  high :: Maybe Boolean, --item highlighted
+  col  :: Maybe Int}     --item connected 
 
 type ItemMap = M.Map Pos (Array Item)
 
@@ -58,37 +61,8 @@ type Config = {
   showWrongTrajs :: Boolean}
 
 
---canvasComponent ::
---  forall query input output m.
---  MonadAff m =>
---  H.Component HH.HTML query input output m
---canvasComponent =
---  Hooks.component \_ _ -> Hooks.do
---    drawOnCanvas
---    Hooks.pure $ HH.canvas [ HP.id "canvas", HP.width 300, HP.height 300 ]
---
---newtype DrawOnCanvas hooks = DrawOnCanvas (UseEffect hooks)
---
---derive instance newtypeDrawOnCanvas :: Newtype (DrawOnCanvas hooks) _
---
---drawOnCanvas :: forall m. MonadAff m => Hook m DrawOnCanvas Unit
---drawOnCanvas =
---  Hooks.wrap Hooks.do
---    Hooks.captures {} Hooks.useTickEffect do
---      mcanvas <- liftEffect $ getCanvasElementById "canvas"
---      mcontext <- liftEffect $ sequence $ getContext2D <$> mcanvas
---      traverse_ drawRect mcontext
---      pure Nothing
---    Hooks.pure unit
---
---drawRect :: forall m. MonadAff m => Context2D -> m Unit
---drawRect context = do
---  liftEffect $ setFillStyle context "red"
---  liftEffect
---    $ fillRect context { x: 100.0, y: 50.0, width: 200.0, height: 25.0 }
-
-
 tileX = 36.0
+tileY = 36.0
 
 -- * Main app
 component =
@@ -98,36 +72,35 @@ component =
     , eval: H.mkEval $ H.defaultEval --{ handleAction = handleAction }
     }
   where
-  initialState _ = 0
+  initialState _ = univ2
 
   render state =
     HH.div 
       [ HP.id "svg-test-container" ]
       [ SE.svg 
-        [SA.height 200.0, SA.width 200.0, SA.viewBox 0.0 0.0 300.0 300.0]
-        [tileWalker N 1,
-         SE.g [SA.transform [SAT.Translate (tileX * 2.0) 0.0]] [tilePortal true N 1],
-         SE.g [SA.transform [SAT.Translate (tileX * 4.0) 0.0]] [tileCollision N E 1]
-        ]
+        [SA.height 200.0, SA.width 200.0, SA.viewBox (toNumber (lims.first.x) * tileX) (toNumber (lims.first.y) * tileY) 
+                                                     (toNumber (lims.last.x+1) * tileX) (toNumber (lims.last.y+1) * tileY)]
+        (drawItemMap (getItemsUniv state Nothing Nothing) lims)
+         --[
+         --  place 0.0 0.0 (tilePortal true N 1),
+         --  place 10.0 10.0 (tilePortal true N 1)
+         --  ]
+        
       ]
+
+           
+place :: forall w i. Pos -> HH.HTML w i -> HH.HTML w i
+place {x, y} w = SE.g [SA.transform [SAT.Translate (tileX * (toNumber x)) (tileY * (toNumber y))]] [w]
 
 
 --  handleAction = undefined --case _ of
     --Increment -> H.modify_ \state -> state + 1
    -- Decrement -> H.modify_ \state -> state - 1
 
---app :: App UI Tick ()
---app = App
---  { appDraw         = drawUI
---  , appChooseCursor = neverShowCursor
---  , appHandleEvent  = handleEvent
---  , appStartEvent   = return ()
---  , appAttrMap      = theMap
---  }
---
---lims :: Limits
---lims = ((-1, -3), (7, 3))
---
+
+lims :: Limits
+lims = {first: {x: -1, y: -3}, last: {x: 7, y: 3}}
+
 --
 ---- * UI
 --
@@ -157,15 +130,41 @@ component =
 --getItemMap :: STBlock -> Maybe SelItem -> Maybe Step -> ItemMap
 --getItemMap (STBlock u ws) sel st = M.map (sortBy $ timePrio st) $ M.unionWith (++) (getItemsUniv u sel st) walkers where
 --  walkers = M.fromListWith (++) $ map (\(Walker (PTD p t d)) -> (p, [Item Walker_ t d Nothing (highlighted t st) Nothing])) ws 
+--type Univ = {
+--  portals :: Array Portal,
+--  emitters :: Array Source,
+--  consumers :: Array Sink}
 --
----- Get the various items in Univ 
---getItemsUniv :: Univ -> Maybe SelItem -> Maybe Step -> ItemMap
---getItemsUniv (Univ ps es cs) sel st = M.fromListWith (++) (entries ++ exits ++ portalEntries ++ portalExits) where
---  entries       = zipWith (\(Source (PTD p t d)) i            -> (p, [Item Entry       t d (selected sel Entry i)       (highlighted t st) Nothing])) es [0..]
---  exits         = zipWith (\(Sink (PTD p t d)) i              -> (p, [Item Exit        t d (selected sel Exit i)        (highlighted t st) Nothing])) cs [0..]
---  portalEntries = zipWith (\(Portal (Sink (PTD p t d)) _) i   -> (p, [Item EntryPortal t d (selected sel EntryPortal i) (highlighted t st) (Just i)])) ps [0..]
---  portalExits   = zipWith (\(Portal _ (Source (PTD p t d))) i -> (p, [Item ExitPortal  t d (selected sel ExitPortal i)  (highlighted t st) (Just i)])) ps [0..]
---
+--type Item = {
+--  itemType :: ItemType,
+--  time :: Time,
+--  dir :: Dir,
+--  sel :: Maybe Boolean,
+--  high :: Maybe Boolean,
+--  col  :: Maybe Int}
+
+getItemsUniv :: Univ -> Maybe SelItem -> Maybe Step -> ItemMap
+getItemsUniv u sel st = M.fromFoldable (addAttrs $ getItemsUniv' u)
+
+addAttrs :: Array (Tuple Pos (Array {itemType:: ItemType, time:: Time, dir:: Dir})) -> Array (Tuple Pos (Array Item))
+addAttrs ai = map (\(Tuple a b) -> (Tuple a (map (\c -> merge c {sel: Nothing, high: Nothing, col: Nothing}) b))) ai
+
+-- Get the various items in Univ 
+getItemsUniv' :: forall r. Univ -> Array (Tuple Pos (Array {itemType:: ItemType, time:: Time, dir:: Dir})) --ItemMap
+getItemsUniv' {portals, emitters, consumers} = do
+  {pos, time, dir} <- emitters
+  let ems = [Tuple pos [{itemType: Entry, time, dir}]]
+  {entry: {pos: enPos, time: enTime, dir: enDir}, exit: {pos: exPos, time: exTime, dir: exDir}} <- portals
+  let entries = [Tuple enPos [{itemType: EntryPortal, time: enTime, dir: enDir}]]
+  let exits   = [Tuple exPos [{itemType: ExitPortal, time: exTime, dir: exDir}]]
+  ems <> entries <> exits 
+
+--fromFoldable (entries) where-- <> exits <> portalEntries <> portalExits) where
+--  addEntries im = insertWith (<>) (\{pos, time, dir} -> (Tuple pos [{itemType: Entry, time, dir, sel: Nothing, high: Nothing, col: Nothing}])) emitters
+  --exits         = zipWith (\(Sink (PTD p t d)) i              -> (p, [Item Exit        t d (selected sel Exit i)        (highlighted t st) Nothing])) consumers [0..]
+  --portalEntries = zipWith (\(Portal (Sink (PTD p t d)) _) i   -> (p, [Item EntryPortal t d (selected sel EntryPortal i) (highlighted t st) (Just i)])) portals [0..]
+  --portalExits   = zipWith (\(Portal _ (Source (PTD p t d))) i -> (p, [Item ExitPortal  t d (selected sel ExitPortal i)  (highlighted t st) (Just i)])) portals [0..]
+
 ---- Highlight items that on the current timestep
 --highlighted t (Just st') = Just $ (st' `div` 10 `mod` maxStep) == t
 --highlighted _ _ = Nothing 
@@ -179,38 +178,39 @@ component =
 --timePrio (Just st) (Item _ t1 _ _ _ _) _ | t1 == st `div` 10 `mod` maxStep = LT 
 --timePrio (Just st) _ (Item _ t2 _ _ _ _) | t2 == st `div` 10 `mod` maxStep = GT 
 --timePrio _ a b = compare a b
---
----- Draws items
---drawItemMap :: ItemMap -> Limits ->  Widget ()
---drawItemMap is ((minX, minY), (maxX, maxY)) = vBox $ map row [maxY, maxY-1 .. minY] where
---  row y = hBox $ map (\x -> drawItems (Pos x y) is) [minX..maxX]
---
----- Draw items at a specific position
---drawItems :: Pos -> ItemMap -> Widget ()
---drawItems p is = case M.lookup p is of
---  Just items -> drawTile items
---  Nothing    -> drawTile [] 
---
----- draw a single tile
----- Only the first item in the list will be displayed (except for collisions)
---drawTile :: [Item] -> Widget ()
---drawTile []                                                                             = str tileEmpty 
---drawTile ((Item EntryPortal t d sel high pair) : _)                                     = setAttr sel high pair $ str $ tilePortal True d t 
---drawTile ((Item ExitPortal t d sel high pair) : _)                                      = setAttr sel high pair $ str $ tilePortal False d t 
---drawTile ((Item Entry t d sel high pair) : _)                                           = setAttr sel high pair $ str $ tileEntry d t
---drawTile ((Item Exit t d sel high pair) : _)                                            = setAttr sel high pair $ str $ tileExit d t
---drawTile ((Item Walker_ t1 d1 sel high pair) : (Item Walker_ t2 d2 _ _ _) : _) | t1 == t2 = setAttr sel high pair $ str $ tileCollision d1 d2 t1
---drawTile ((Item Walker_ t d sel high pair) : _)                                          = setAttr sel high pair $ str $ tileWalker d t
---
---setAttr :: Maybe Bool -> Maybe Bool -> Maybe Int -> Widget () -> Widget () 
---setAttr sel high pair = withDefAttr (pairAttr pair) . withDefAttr (selectAttr sel) . withDefAttr (dimAttr high) where
---  dimAttr (Just False) = dimA
---  dimAttr _ = mempty
---  selectAttr (Just True) = selA 
---  selectAttr _ = mempty
---  pairAttr (Just n) = portalA n
---  pairAttr _ = mempty
---
+
+-- Draws items
+drawItemMap :: forall w i. ItemMap -> Limits -> Array (HH.HTML w i)
+drawItemMap is {first: {x: minX, y: minY}, last: {x: maxX, y: maxY}} = catMaybes $ concatMap row (range minY maxY) where
+  row y = map (\x -> drawItems {x:x, y:y} is) (range minX maxX)
+
+-- Draw items at a specific position
+drawItems :: forall w i. Pos -> ItemMap -> Maybe (HH.HTML w i)
+drawItems p is = case M.lookup p is of
+  Just items -> Just $ place p $ drawTile items
+  Nothing    -> Nothing
+
+-- draw a single tile
+-- Only the first item in the list will be displayed (except for collisions)
+drawTile :: forall w i. Array Item -> HH.HTML w i
+drawTile ai = case uncons ai of
+  Just {head: {itemType: EntryPortal, time, dir, sel, high, col}, tail: _} -> setAttr sel high col $ tilePortal true dir time 
+  Just {head: {itemType: ExitPortal,  time, dir, sel, high, col}, tail: _} -> setAttr sel high col $ tilePortal false dir time 
+  Just {head: {itemType: Entry,       time, dir, sel, high, col}, tail: _} -> setAttr sel high col $ tileEntry dir time 
+  Just {head: {itemType: Exit,        time, dir, sel, high, col}, tail: _} -> setAttr sel high col $ tileExit dir time 
+  Just {head: {itemType: Walker_,     time: t1, dir: d1, sel, high, col}, tail: [{itemType: Walker_, time: t2, dir: d2}]} | t1 == t2  -> setAttr sel high col $ tileCollision d1 d2 t1 
+  Just {head: {itemType: Walker_,      time, dir, sel, high, col}, tail: _} -> setAttr sel high col $ tileWalker dir time 
+  Nothing -> tileEmpty 
+
+setAttr :: forall w i. Maybe Boolean -> Maybe Boolean -> Maybe Int -> HH.HTML i w -> HH.HTML i w 
+setAttr sel high pair h = h --withDefAttr (pairAttr pair) . withDefAttr (selectAttr sel) . withDefAttr (dimAttr high) where
+ -- dimAttr (Just False) = dimA
+ -- dimAttr _ = mempty
+ -- selectAttr (Just True) = selA 
+ -- selectAttr _ = mempty
+ -- pairAttr (Just n) = portalA n
+ -- pairAttr _ = mempty
+
 ---- * Events
 --
 --handleEvent  :: BrickEvent () Tick -> EventM () UI ()
