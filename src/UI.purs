@@ -32,7 +32,6 @@ import Halogen.Svg.Elements as SE
 import Halogen.Svg.Attributes.Transform as SAT
 import Record
 
-data ItemType = EntryPortal | ExitPortal | Entry | Exit | Walker_
 
 type Item = {
   itemType :: ItemType,
@@ -78,19 +77,14 @@ component =
     HH.div 
       [ HP.id "svg-test-container" ]
       [ SE.svg 
-        [SA.height 200.0, SA.width 200.0, SA.viewBox (toNumber (lims.first.x) * tileX) (toNumber (lims.first.y) * tileY) 
-                                                     (toNumber (lims.last.x+1) * tileX) (toNumber (lims.last.y+1) * tileY)]
+        [SA.height 400.0, SA.width 400.0, SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y)]
+        --[place {x: 8, y: 0} $ tilePortal' false]
         (drawItemMap (getItemsUniv state Nothing Nothing) lims)
-         --[
-         --  place 0.0 0.0 (tilePortal true N 1),
-         --  place 10.0 10.0 (tilePortal true N 1)
-         --  ]
-        
       ]
 
            
 place :: forall w i. Pos -> HH.HTML w i -> HH.HTML w i
-place {x, y} w = SE.g [SA.transform [SAT.Translate (tileX * (toNumber x)) (tileY * (toNumber y))]] [w]
+place {x, y} w = SE.g [SA.transform [SAT.Translate (toNumber x) (toNumber y)]] [w]
 
 
 --  handleAction = undefined --case _ of
@@ -99,7 +93,7 @@ place {x, y} w = SE.g [SA.transform [SAT.Translate (tileX * (toNumber x)) (tileY
 
 
 lims :: Limits
-lims = {first: {x: -1, y: -3}, last: {x: 7, y: 3}}
+lims = {first: {x: 0, y: 0}, last: {x: 9, y: 9}}
 
 --
 ---- * UI
@@ -194,12 +188,9 @@ drawItems p is = case M.lookup p is of
 -- Only the first item in the list will be displayed (except for collisions)
 drawTile :: forall w i. Array Item -> HH.HTML w i
 drawTile ai = case uncons ai of
-  Just {head: {itemType: EntryPortal, time, dir, sel, high, col}, tail: _} -> setAttr sel high col $ tilePortal true dir time 
-  Just {head: {itemType: ExitPortal,  time, dir, sel, high, col}, tail: _} -> setAttr sel high col $ tilePortal false dir time 
-  Just {head: {itemType: Entry,       time, dir, sel, high, col}, tail: _} -> setAttr sel high col $ tileEntry dir time 
-  Just {head: {itemType: Exit,        time, dir, sel, high, col}, tail: _} -> setAttr sel high col $ tileExit dir time 
+  Just {head: {itemType, time, dir, sel, high, col}, tail: _} -> setAttr sel high col $ getTile itemType dir time 
   Just {head: {itemType: Walker_,     time: t1, dir: d1, sel, high, col}, tail: [{itemType: Walker_, time: t2, dir: d2}]} | t1 == t2  -> setAttr sel high col $ tileCollision d1 d2 t1 
-  Just {head: {itemType: Walker_,      time, dir, sel, high, col}, tail: _} -> setAttr sel high col $ tileWalker dir time 
+  Just {head: {itemType: Walker_,      time, dir, sel, high, col}, tail: _} -> setAttr sel high col $ getTile Walker_ dir time 
   Nothing -> tileEmpty 
 
 setAttr :: forall w i. Maybe Boolean -> Maybe Boolean -> Maybe Int -> HH.HTML i w -> HH.HTML i w 

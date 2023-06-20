@@ -116,9 +116,9 @@ univ1 = {portals : [{entry : {pos : {x : 6, y : 0}, time : 6, dir : E},
 
 -- two solutions: going straight or going through portal
 univ2 :: Univ
-univ2 = {portals : [{entry : {pos : {x : 3, y : -3}, time : 6, dir : S},
-                     exit : {pos : {x : 6, y : 0}, time : 0, dir : W}}],
-         emitters : [{pos : {x : 0, y : 0}, time : 0, dir : E}],
+univ2 = {portals : [{entry : {pos : {x : 4, y : 0}, time : 6, dir : N},
+                     exit : {pos : {x : 7, y : 3}, time : 0, dir : W}}],
+         emitters : [{pos : {x : 1, y : 3}, time : 0, dir : E}],
          consumers : []}
 
 ---- The Djinn
