@@ -31,7 +31,8 @@ import Halogen.Svg.Attributes as SA
 import Halogen.Svg.Elements as SE
 import Halogen.Svg.Attributes.Transform as SAT
 import Record
-
+import Debug
+import Web.HTML.Common
 
 type Item = {
   itemType :: ItemType,
@@ -76,112 +77,37 @@ initialState _ = {initUniv: univ2, selItem: Just {itemType: EntryPortal, itemInd
 
 render :: forall w i. UI -> HH.HTML w i
 render state =
-    HH.div 
-      [ HP.id "svg-test-container" ]
-      [ SE.svg [SA.height 360.0, SA.width 360.0]
-          [ drawUniv state.initUniv, 
-            SE.image [SA.x 0.0, SA.y 0.0, SA.width 360.0, SA.height 360.0, SA.href "assets/univ_background.svg"]
-          ]
+    HH.div []
+      [ HH.div [HP.class_ (ClassName "config")] 
+          [ 
+          drawBlock {univ: state.initUniv, walkers: []}
+          ],
+        HH.div [HP.class_ (ClassName "solutions")] 
+          (map drawBlock $ (getAllSTBlocks state.initUniv))
       ]
-
-drawUniv :: forall w i. Univ -> HH.HTML w i
-drawUniv univ = SE.svg [SA.height 360.0, SA.width 360.0, SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y)]
-                       (drawItemMap (getItemsUniv univ Nothing Nothing) lims)
-           
-place :: forall w i. Pos -> HH.HTML w i -> HH.HTML w i
-place {x, y} w = SE.g [SA.transform [SAT.Translate (toNumber x) (toNumber y)]] [w]
-
 
 --  handleAction = undefined --case _ of
     --Increment -> H.modify_ \state -> state + 1
    -- Decrement -> H.modify_ \state -> state - 1
 
+           
+drawBlock :: forall w i. STBlock -> HH.HTML w i
+drawBlock block = HH.div [] $ singleton $ 
+  SE.svg [SA.height 360.0, SA.width 360.0, SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y)]
+         [
+           drawItemMap (getItemMap block Nothing Nothing) lims,
+           SE.image [SA.x 0.0, SA.y 0.0, SA.width 9.0, SA.height 9.0, SA.href "assets/univ_background.svg"]
+         ]
 
-lims :: Limits
-lims = {first: {x: 0, y: 0}, last: {x: 9, y: 9}}
+place :: forall w i. Pos -> HH.HTML w i -> HH.HTML w i
+place {x, y} w = SE.g [SA.transform [SAT.Translate (toNumber x) (toNumber y)]] [w]
 
---
----- * UI
---
----- Display the whole interface
---drawUI :: UI -> [Widget ()]
---drawUI (UI u sel st conf)= [center (drawConfigPanel u sel) <+> borderWithLabel (str "Instructions") (padAll 1 $ str help)
---                       <=> (str $ encouragement (showSols conf) (length $ getValidSTBlocks u))
---                       <=> (if showSols conf then drawSearchPanel u st conf else emptyWidget)]
---
----- Display the top panel for configuring the universe.
---drawConfigPanel :: Univ -> Maybe SelItem -> Widget ()
---drawConfigPanel u sel = borderWithLabel (str " Universe setup ") $ drawItemMap (getItemsUniv u sel Nothing) lims 
---
----- Display the various solutions
---drawSearchPanel :: Univ -> Step -> Config -> Widget ()
---drawSearchPanel u st conf = hBox $ if showWrongTrajs conf then showAllSols else showGoodSols where
---  showGoodSols = zipWith (\b i -> showSol b (" Solution n." ++ show i ++ " ") True st) (filter isValidBlock $ getAllSTBlocks u) [1..]
---  showAllSols = map (\b -> showSol b "" (isValidBlock b) st) $ getAllSTBlocks u
---
---showSol :: STBlock -> String -> Bool -> Step -> Widget ()
---showSol block msg isGood step = overrideAttr borderAttr (if isGood then borderGood else borderBad) $ drawBlock msg block step
---
---drawBlock :: String -> STBlock -> Step -> Widget ()
---drawBlock label block step = borderWithLabel (str label) $ drawItemMap (getItemMap block Nothing (Just step)) lims
---
----- Get the various items in a Block as a Map
---getItemMap :: STBlock -> Maybe SelItem -> Maybe Step -> ItemMap
---getItemMap (STBlock u ws) sel st = M.map (sortBy $ timePrio st) $ M.unionWith (++) (getItemsUniv u sel st) walkers where
---  walkers = M.fromListWith (++) $ map (\(Walker (PTD p t d)) -> (p, [Item Walker_ t d Nothing (highlighted t st) Nothing])) ws 
---type Univ = {
---  portals :: Array Portal,
---  emitters :: Array Source,
---  consumers :: Array Sink}
---
---type Item = {
---  itemType :: ItemType,
---  time :: Time,
---  dir :: Dir,
---  sel :: Maybe Boolean,
---  high :: Maybe Boolean,
---  col  :: Maybe Int}
-
-getItemsUniv :: Univ -> Maybe SelItem -> Maybe Step -> ItemMap
-getItemsUniv u sel st = M.fromFoldable (addAttrs $ getItemsUniv' u)
-
-addAttrs :: Array (Tuple Pos (Array {itemType:: ItemType, time:: Time, dir:: Dir})) -> Array (Tuple Pos (Array Item))
-addAttrs ai = map (\(Tuple a b) -> (Tuple a (map (\c -> merge c {sel: Nothing, high: Nothing, col: Nothing}) b))) ai
-
--- Get the various items in Univ 
-getItemsUniv' :: Univ -> Array (Tuple Pos (Array {itemType:: ItemType, time:: Time, dir:: Dir})) --ItemMap
-getItemsUniv' {portals, emitters, consumers} = do
-  {pos, time, dir} <- emitters
-  let ems = [Tuple pos [{itemType: Entry, time, dir}]]
-  {entry: {pos: enPos, time: enTime, dir: enDir}, exit: {pos: exPos, time: exTime, dir: exDir}} <- portals
-  let entries = [Tuple enPos [{itemType: EntryPortal, time: enTime, dir: enDir}]]
-  let exits   = [Tuple exPos [{itemType: ExitPortal, time: exTime, dir: exDir}]]
-  ems <> entries <> exits 
-
---fromFoldable (entries) where-- <> exits <> portalEntries <> portalExits) where
---  addEntries im = insertWith (<>) (\{pos, time, dir} -> (Tuple pos [{itemType: Entry, time, dir, sel: Nothing, high: Nothing, col: Nothing}])) emitters
-  --exits         = zipWith (\(Sink (PTD p t d)) i              -> (p, [Item Exit        t d (selected sel Exit i)        (highlighted t st) Nothing])) consumers [0..]
-  --portalEntries = zipWith (\(Portal (Sink (PTD p t d)) _) i   -> (p, [Item EntryPortal t d (selected sel EntryPortal i) (highlighted t st) (Just i)])) portals [0..]
-  --portalExits   = zipWith (\(Portal _ (Source (PTD p t d))) i -> (p, [Item ExitPortal  t d (selected sel ExitPortal i)  (highlighted t st) (Just i)])) portals [0..]
-
----- Highlight items that on the current timestep
---highlighted t (Just st') = Just $ (st' `div` 10 `mod` maxStep) == t
---highlighted _ _ = Nothing 
---
----- Items selected by the user
---selected :: Maybe SelItem -> ItemType -> Int -> Maybe Bool
---selected (Just (SelItem it index)) it' index' = Just ( it == it' && index == index')
---selected _ _ _ = Nothing 
---
----- Items that are on the current timestep will be displayed with higher priority.
---timePrio (Just st) (Item _ t1 _ _ _ _) _ | t1 == st `div` 10 `mod` maxStep = LT 
---timePrio (Just st) _ (Item _ t2 _ _ _ _) | t2 == st `div` 10 `mod` maxStep = GT 
---timePrio _ a b = compare a b
 
 -- Draws items
-drawItemMap :: forall w i. ItemMap -> Limits -> Array (HH.HTML w i)
-drawItemMap is {first: {x: minX, y: minY}, last: {x: maxX, y: maxY}} = catMaybes $ concatMap row (range minY maxY) where
-  row y = map (\x -> drawItems {x:x, y:y} is) (range minX maxX)
+drawItemMap :: forall w i. ItemMap -> Limits -> HH.HTML w i
+drawItemMap is {first: {x: minX, y: minY}, last: {x: maxX, y: maxY}} = 
+  SE.g [] $ catMaybes $ concatMap row (range minY maxY) where
+    row y = map (\x -> drawItems {x:x, y:y} is) (range minX maxX)
 
 -- Draw items at a specific position
 drawItems :: forall w i. Pos -> ItemMap -> Maybe (HH.HTML w i)
@@ -200,6 +126,28 @@ drawTile ai = case uncons ai of
 
 setAttr :: forall w i. Maybe Boolean -> Maybe Boolean -> Maybe Int -> HH.HTML i w -> HH.HTML i w 
 setAttr sel high pair h = h --withDefAttr (pairAttr pair) . withDefAttr (selectAttr sel) . withDefAttr (dimAttr high) where
+
+
+lims :: Limits
+lims = {first: {x: 0, y: 0}, last: {x: 9, y: 9}}
+
+
+getItemMap :: STBlock -> Maybe SelItem -> Maybe Step -> ItemMap
+getItemMap u sel st = M.fromFoldable (addAttrs $ getItemMap' u)
+
+addAttrs :: Array (Tuple Pos (Array {itemType:: ItemType, time:: Time, dir:: Dir})) -> Array (Tuple Pos (Array Item))
+addAttrs ai = map (\(Tuple a b) -> (Tuple a (map (\c -> merge c {sel: Nothing, high: Nothing, col: Nothing}) b))) ai
+
+-- Get the various items in Univ 
+getItemMap' :: STBlock -> Array (Tuple Pos (Array {itemType:: ItemType, time:: Time, dir:: Dir})) --ItemMap
+getItemMap' {univ: {portals, emitters, consumers}, walkers: walkers} = ems <> entries <> exits <> ws where
+  ems = map (toTuple Exit) emitters
+  cos = map (toTuple Entry) consumers
+  exits = map (_.exit >>> toTuple ExitPortal ) portals
+  entries = map (_.entry >>> toTuple EntryPortal) portals
+  ws = map (toTuple Walker_) walkers
+  toTuple it {pos, time, dir} = Tuple pos [{itemType: it, time, dir}]
+
  -- dimAttr (Just False) = dimA
  -- dimAttr _ = mempty
  -- selectAttr (Just True) = selA 

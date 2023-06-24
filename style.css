@@ -1,0 +1,8 @@
+.config {
+  display: flex;
+}
+
+.solutions {
+  display: flex;
+  gap: 10px;
+}

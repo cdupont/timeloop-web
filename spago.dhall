@@ -5,6 +5,7 @@
   , "canvas"
   , "console"
   , "css"
+  , "debug"
   , "effect"
   , "enums"
   , "foldable-traversable"
@@ -21,6 +22,7 @@
   , "record"
   , "svg-parser-halogen"
   , "tuples"
+  , "web-html"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]
