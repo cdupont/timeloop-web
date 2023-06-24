@@ -14,13 +14,13 @@ import Control.Semigroupoid
 -- in case of collision, we always turn right
 move :: Array Walker -> Array Walker
 move [w] = [simpleMove w]
-move ws = map (simpleMove >>> turn Right_) ws
+move ws = map (turn Right_ >>> simpleMove) ws
 
 -- Move one step in a flat universe.
 simpleMove :: Walker -> Walker
 simpleMove w = case w.dir of
-  N -> w { pos {y = w.pos.y + 1}, time = w.time + 1}
-  S -> w { pos {y = w.pos.y - 1}, time = w.time + 1}
+  S -> w { pos {y = w.pos.y + 1}, time = w.time + 1}
+  N -> w { pos {y = w.pos.y - 1}, time = w.time + 1}
   E -> w { pos {x = w.pos.x + 1}, time = w.time + 1}
   W -> w { pos {x = w.pos.x - 1}, time = w.time + 1}
 

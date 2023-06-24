@@ -70,18 +70,23 @@ component =
     , render
     , eval: H.mkEval $ H.defaultEval --{ handleAction = handleAction }
     }
-  where
-  initialState _ = univ2
 
-  render state =
+initialState :: forall i. i -> UI
+initialState _ = {initUniv: univ2, selItem: Just {itemType: EntryPortal, itemIndex: 0}, stepItem: 0, config: {showSols: false, showWrongTrajs: false}}
+
+render :: forall w i. UI -> HH.HTML w i
+render state =
     HH.div 
       [ HP.id "svg-test-container" ]
-      [ SE.svg 
-        [SA.height 400.0, SA.width 400.0, SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y)]
-        --[place {x: 8, y: 0} $ tilePortal' false]
-        (drawItemMap (getItemsUniv state Nothing Nothing) lims)
+      [ SE.svg [SA.height 360.0, SA.width 360.0]
+          [ drawUniv state.initUniv, 
+            SE.image [SA.x 0.0, SA.y 0.0, SA.width 360.0, SA.height 360.0, SA.href "assets/univ_background.svg"]
+          ]
       ]
 
+drawUniv :: forall w i. Univ -> HH.HTML w i
+drawUniv univ = SE.svg [SA.height 360.0, SA.width 360.0, SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y)]
+                       (drawItemMap (getItemsUniv univ Nothing Nothing) lims)
            
 place :: forall w i. Pos -> HH.HTML w i -> HH.HTML w i
 place {x, y} w = SE.g [SA.transform [SAT.Translate (toNumber x) (toNumber y)]] [w]
@@ -144,7 +149,7 @@ addAttrs :: Array (Tuple Pos (Array {itemType:: ItemType, time:: Time, dir:: Dir
 addAttrs ai = map (\(Tuple a b) -> (Tuple a (map (\c -> merge c {sel: Nothing, high: Nothing, col: Nothing}) b))) ai
 
 -- Get the various items in Univ 
-getItemsUniv' :: forall r. Univ -> Array (Tuple Pos (Array {itemType:: ItemType, time:: Time, dir:: Dir})) --ItemMap
+getItemsUniv' :: Univ -> Array (Tuple Pos (Array {itemType:: ItemType, time:: Time, dir:: Dir})) --ItemMap
 getItemsUniv' {portals, emitters, consumers} = do
   {pos, time, dir} <- emitters
   let ems = [Tuple pos [{itemType: Entry, time, dir}]]

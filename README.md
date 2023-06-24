@@ -11,4 +11,4 @@ Install
 spago bundle-app
 ```
 
-Game is available by openning test.html
+Game is available by openning index.html
