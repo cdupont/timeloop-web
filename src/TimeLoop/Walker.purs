@@ -1,6 +1,7 @@
 
 module TimeLoop.Walker where
 
+import Prelude
 import TimeLoop.Types
 import Data.Enum
 import Data.Bounded
@@ -33,12 +34,25 @@ turn' rd ptd = ptd { dir = turnRel rd ptd.dir }
 
 -- Turn an absolute direction using a relative one
 turnRel :: RelDir -> Dir -> Dir
-turnRel Right_ d = case succ d of
-                    Just d' -> d'
-                    Nothing -> bottom
-turnRel Left_ d  = case pred d  of
-                    Just d' -> d'
-                    Nothing -> top
-turnRel Back a   = turnRel Right_ (turnRel Right_ a)
-turnRel Front a  = a
+turnRel Right_ = nextDir
+turnRel Back   = nextDir >>> nextDir  
+turnRel Left_  = nextDir >>> nextDir >>> nextDir 
+turnRel Front  = identity 
 
+nextDir :: Dir -> Dir
+nextDir d = case succ d of
+             Just d' -> d'
+             Nothing -> bottom
+
+relDirN :: Dir -> RelDir
+relDirN N = Back
+relDirN S = Front
+relDirN E = Left_
+relDirN W = Right_
+
+relTurn :: Dir -> Dir -> RelDir
+relTurn d1 d2 | turnRel Right_ d1 == d2 = Right_ 
+relTurn d1 d2 | turnRel Left_ d1 == d2 = Left_ 
+relTurn d1 d2 | turnRel Front d1 == d2 = Front 
+relTurn d1 d2 | turnRel Back d1 == d2 = Back 
+relTurn _ _ = Front 

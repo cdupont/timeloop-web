@@ -33,6 +33,8 @@ import Halogen.Svg.Attributes.Transform as SAT
 import Record
 import Debug
 import Web.HTML.Common
+import Effect.Console (logShow)
+import Effect.Class (class MonadEffect)
 
 type Item = {
   itemType :: ItemType,
@@ -69,16 +71,16 @@ component =
   H.mkComponent
     { initialState
     , render
-    , eval: H.mkEval $ H.defaultEval --{ handleAction = handleAction }
+    , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
     }
 
 initialState :: forall i. i -> UI
 initialState _ = {initUniv: univ2, selItem: Just {itemType: EntryPortal, itemIndex: 0}, stepItem: 0, config: {showSols: false, showWrongTrajs: false}}
 
-render :: forall w i. UI -> HH.HTML w i
+render :: forall w. UI -> HH.HTML w Action
 render state =
     HH.div []
-      [ HH.div [HP.class_ (ClassName "config")] 
+      [ HH.div [HP.class_ (ClassName "config")] --, HE.onClick \_ -> Test] 
           [ 
           drawBlock {univ: state.initUniv, walkers: []}
           ],
@@ -86,9 +88,13 @@ render state =
           (map drawBlock $ (getAllSTBlocks state.initUniv))
       ]
 
---  handleAction = undefined --case _ of
-    --Increment -> H.modify_ \state -> state + 1
-   -- Decrement -> H.modify_ \state -> state - 1
+data Action = Rotate Int
+
+handleAction :: forall output m. MonadEffect m => Action -> H.HalogenM UI Action () output m Unit
+handleAction a = case a of
+  Rotate a -> do
+     H.liftEffect $ logShow "test"
+     H.modify_ \a -> a
 
            
 drawBlock :: forall w i. STBlock -> HH.HTML w i
@@ -106,7 +112,7 @@ place {x, y} w = SE.g [SA.transform [SAT.Translate (toNumber x) (toNumber y)]] [
 -- Draws items
 drawItemMap :: forall w i. ItemMap -> Limits -> HH.HTML w i
 drawItemMap is {first: {x: minX, y: minY}, last: {x: maxX, y: maxY}} = 
-  SE.g [] $ catMaybes $ concatMap row (range minY maxY) where
+  trace (show is) \_ -> SE.g [] $ catMaybes $ concatMap row (range minY maxY) where
     row y = map (\x -> drawItems {x:x, y:y} is) (range minX maxX)
 
 -- Draw items at a specific position
@@ -119,9 +125,8 @@ drawItems p is = case M.lookup p is of
 -- Only the first item in the list will be displayed (except for collisions)
 drawTile :: forall w i. Array Item -> HH.HTML w i
 drawTile ai = case uncons ai of
-  Just {head: {itemType, time, dir, sel, high, col}, tail: _} -> setAttr sel high col $ getTile itemType dir time 
-  Just {head: {itemType: Walker_,     time: t1, dir: d1, sel, high, col}, tail: [{itemType: Walker_, time: t2, dir: d2}]} | t1 == t2  -> setAttr sel high col $ tileCollision d1 d2 t1 
-  Just {head: {itemType: Walker_,      time, dir, sel, high, col}, tail: _} -> setAttr sel high col $ getTile Walker_ dir time 
+  Just {head: {itemType: Walker_,     time: t1, dir: d1, sel, high, col}, tail: [{itemType: Walker_, time: t2, dir: d2}]} | t1 == t2  -> trace "here" \_-> setAttr sel high col $ getColTile d1 d2 t1                 
+  Just {head: {itemType, time, dir, sel, high, col}, tail: _} -> trace "first" \_-> setAttr sel high col $ getTile itemType dir time 
   Nothing -> tileEmpty 
 
 setAttr :: forall w i. Maybe Boolean -> Maybe Boolean -> Maybe Int -> HH.HTML i w -> HH.HTML i w 
@@ -133,7 +138,7 @@ lims = {first: {x: 0, y: 0}, last: {x: 9, y: 9}}
 
 
 getItemMap :: STBlock -> Maybe SelItem -> Maybe Step -> ItemMap
-getItemMap u sel st = M.fromFoldable (addAttrs $ getItemMap' u)
+getItemMap u sel st = M.fromFoldableWith (<>) (addAttrs $ getItemMap' u)
 
 addAttrs :: Array (Tuple Pos (Array {itemType:: ItemType, time:: Time, dir:: Dir})) -> Array (Tuple Pos (Array Item))
 addAttrs ai = map (\(Tuple a b) -> (Tuple a (map (\c -> merge c {sel: Nothing, high: Nothing, col: Nothing}) b))) ai

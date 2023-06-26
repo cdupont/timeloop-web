@@ -27,10 +27,10 @@ instance _5_ ∷ Bounded Dir where
 instance _10_ ∷ Show Dir where
    show = genericShow 
 
--- , Ord, Show, Enum, Bounded)
-
 data RelDir = Front | Back | Right_ | Left_
---  deriving (Eq, Ord, Show, Enum, Bounded)
+derive instance Generic RelDir _
+instance _11__ ∷ Show RelDir where
+   show = genericShow 
 
 type Time = Int
 

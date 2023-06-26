@@ -17,6 +17,8 @@ import Halogen.HTML as HH
 import Halogen.HTML.CSS
 import CSS.Color
 import CSS.Font
+import Data.Show.Generic
+import Data.Generic.Rep
 
 
 --tilePortal :: forall w i. Boolean -> Dir -> Time -> HTML w i
@@ -32,6 +34,9 @@ tileY = 36.0
 
 
 data ItemType = EntryPortal | ExitPortal | Entry | Exit | Walker_
+derive instance Generic ItemType _
+instance i ∷ Show ItemType where
+   show = genericShow 
 
 tileAsset :: ItemType -> String
 tileAsset EntryPortal = "assets/entry_portal.svg"
@@ -39,6 +44,9 @@ tileAsset ExitPortal  = "assets/exit_portal.svg"
 tileAsset Entry       = "assets/entry.svg"
 tileAsset Exit        = "assets/exit.svg"
 tileAsset Walker_     = "assets/walker.svg"
+
+colAsset :: String
+colAsset = "assets/col.svg"
 
 rotateDir :: Dir -> Number
 rotateDir N = 0.0
@@ -52,71 +60,17 @@ getTile it dir time = SE.svg [SA.height 1.0, SA.width 1.0, SA.viewBox 0.0 0.0 ti
                                    [SE.image [SA.x 0.0, SA.y 0.0, SA.width tileX, SA.height tileY, SA.href $ tileAsset it]],
                               SE.text [SA.x 24.0, SA.y 12.0] [HH.text (show time)]]
 
---tilePortal :: forall w i. Boolean -> Dir -> Time -> HTML w i
---tilePortal in_ dir time = (tilePortal' in_) 
---
---
---tilePortal' :: forall w i. Boolean -> HTML w i
---tilePortal' in_ = SE.svg [SA.height 1.0, SA.width 1.0, SA.viewBox 0.0 0.0 36.0 36.0] 
---                         [SE.image [SA.x 0.0, SA.y 0.0, SA.width 36.0, SA.height 36.0, SA.href "assets/portal_exit.svg"]]
---
---getTileHTML :: forall w i. ItemType -> HTML w i
---getTileHTML it = SE.svg [SA.height 1.0, SA.width 1.0, SA.viewBox 0.0 0.0 36.0 36.0] 
---                        [SE.image [SA.x 0.0, SA.y 0.0, SA.width 36.0, SA.height 36.0, SA.href $ tileAsset it]]
---
---tileWalker :: forall w i. Dir -> Time -> HTML w i
---tileWalker = tileArr showArr  
---
---tileEntry :: forall w i. Dir -> Time -> HTML w i
---tileEntry = tileArr showFromBarArr  
---
---tileExit :: forall w i. Dir -> Time -> HTML w i
---tileExit = tileArr showToBarArr  
---
---tileArr :: forall w i. (Dir -> String) -> Dir -> Time -> HTML w i
---tileArr showArr dir time = SE.svg [SA.height 36.0, SA.width 36.0, SA.viewBox 0.0 0.0 36.0 36.0] 
---  [SE.text [SA.x 12.0, SA.y 24.0] [HH.text (showArr dir)],
---   SE.text [SA.x 24.0, SA.y 12.0] [HH.text (show time)]
---  ]
 
-tileCollision :: forall w i. Dir -> Dir -> Time -> HTML w i
-tileCollision d1 d2 time = SE.svg [SA.height 36.0, SA.width 36.0, SA.viewBox 0.0 0.0 36.0 36.0] 
-   ([SE.text [SA.x 12.0, SA.y 24.0] [HH.text "★"]] <>
-    [SE.text [SA.x 24.0, SA.y 12.0] [HH.text (show time)]] <> 
-    [SE.text (tilePos d1) [HH.text (getAngleArr d1)]] <>
-    [SE.text (tilePos d2) [HH.text (getAngleArr d2)]])
+getColTile :: forall w i. Dir -> Dir -> Time -> HTML w i
+getColTile d1 d2 time = SE.svg [SA.height 1.0, SA.width 1.0, SA.viewBox 0.0 0.0 tileX tileY] 
+                             [SE.g [SA.transform [SAT.Rotate (rotateDir d1) (tileX / 2.0) (tileY / 2.0)]] 
+                                   [SE.image [SA.x 0.0, SA.y 0.0, SA.width tileX, SA.height tileY, SA.href $ colAsset]],
+                              SE.g [SA.transform [SAT.Rotate (rotateDir d2) (tileX / 2.0) (tileY / 2.0)]] 
+                                   [SE.image [SA.x 0.0, SA.y 0.0, SA.width tileX, SA.height tileY, SA.href $ colAsset]],
+                              SE.text [SA.x 24.0, SA.y 12.0] [HH.text (show time)]]
 
 tileEmpty :: forall w i. HTML w i
 tileEmpty = SE.svg [SA.height 36.0, SA.width 36.0, SA.viewBox 0.0 0.0 36.0 36.0] 
   [SE.text [SA.x 12.0, SA.y 24.0] [HH.text "??"]
   ]
 
-tilePos :: forall i. Dir -> Array (HP.IProp SI.SVGtext i)
-tilePos E = [SA.x  0.0, SA.y 24.0]
-tilePos S = [SA.x 12.0, SA.y 12.0]
-tilePos W = [SA.x 24.0, SA.y 24.0]
-tilePos N = [SA.x 12.0, SA.y 36.0]
-
-showArr :: Dir -> String
-showArr N = "↑"
-showArr W = "←"
-showArr E = "→"
-showArr S = "↓"
-
-showFromBarArr :: Dir -> String 
-showFromBarArr N = "↥"
-showFromBarArr W = "↤"
-showFromBarArr E = "↦"
-showFromBarArr S = "↧"
-
-showToBarArr :: Dir -> String 
-showToBarArr N = "⤒"
-showToBarArr W = "⇤"
-showToBarArr E = "⇥"
-showToBarArr S = "⤓"
-
-getAngleArr :: Dir -> String
-getAngleArr N = "↱"
-getAngleArr S = "↲"
-getAngleArr E = "⬎"
-getAngleArr W = "⬑"
