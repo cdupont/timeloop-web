@@ -22,6 +22,7 @@
   , "record"
   , "svg-parser-halogen"
   , "tuples"
+  , "undefined"
   , "web-html"
   ]
 , packages = ./packages.dhall

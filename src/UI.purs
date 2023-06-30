@@ -35,16 +35,22 @@ import Debug
 import Web.HTML.Common
 import Effect.Console (logShow)
 import Effect.Class (class MonadEffect)
+import Undefined
+import Data.Array.Partial as AP
+import Data.Foldable
+import Data.Function
+import Data.Array.NonEmpty as AN
 
 type Item = {
   itemType :: ItemType,
-  time :: Time,
-  dir :: Dir,
-  sel :: Maybe Boolean,  --selected item
-  high :: Maybe Boolean, --item highlighted
-  col  :: Maybe Int}     --item connected 
+  pos :: Pos,
+  time :: Time}
 
-type ItemMap = M.Map Pos (Array Item)
+--derive instance Eq Item
+--instance Ord Item where
+--  compare {itemType: it1, time: t1} {itemType: it2, time: t2} = undefined
+
+type ItemMap = Array Item
 
 type SelItem = {
   itemType  :: ItemType,
@@ -54,7 +60,7 @@ type Step = Int
 
 type UI = {
   initUniv :: Univ,
-  selItem  :: Maybe SelItem, -- Which item is selected
+  selItem  :: Maybe Int, -- Which item is selected
   stepItem :: Step,          -- A time step counter
   config   :: Config}   
 
@@ -75,17 +81,17 @@ component =
     }
 
 initialState :: forall i. i -> UI
-initialState _ = {initUniv: univ2, selItem: Just {itemType: EntryPortal, itemIndex: 0}, stepItem: 0, config: {showSols: false, showWrongTrajs: false}}
+initialState _ = {initUniv: univ2, selItem: Just 0, stepItem: 0, config: {showSols: false, showWrongTrajs: false}}
 
 render :: forall w. UI -> HH.HTML w Action
 render state =
     HH.div []
       [ HH.div [HP.class_ (ClassName "config")] --, HE.onClick \_ -> Test] 
           [ 
-          drawBlock {univ: state.initUniv, walkers: []}
+          drawBlock Nothing {univ: state.initUniv, walkers: []}
           ],
         HH.div [HP.class_ (ClassName "solutions")] 
-          (map drawBlock $ (getAllSTBlocks state.initUniv))
+          (map (drawBlock $ Just state.stepItem) (getAllSTBlocks state.initUniv))
       ]
 
 data Action = Rotate Int
@@ -97,11 +103,11 @@ handleAction a = case a of
      H.modify_ \a -> a
 
            
-drawBlock :: forall w i. STBlock -> HH.HTML w i
-drawBlock block = HH.div [] $ singleton $ 
+drawBlock :: forall w i. Maybe Time -> STBlock -> HH.HTML w i
+drawBlock mt block = HH.div [] $ singleton $ 
   SE.svg [SA.height 360.0, SA.width 360.0, SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y)]
          [
-           drawItemMap (getItemMap block Nothing Nothing) lims,
+           drawItemMap (getItemMap block mt) lims,
            SE.image [SA.x 0.0, SA.y 0.0, SA.width 9.0, SA.height 9.0, SA.href "assets/univ_background.svg"]
          ]
 
@@ -111,54 +117,28 @@ place {x, y} w = SE.g [SA.transform [SAT.Translate (toNumber x) (toNumber y)]] [
 
 -- Draws items
 drawItemMap :: forall w i. ItemMap -> Limits -> HH.HTML w i
-drawItemMap is {first: {x: minX, y: minY}, last: {x: maxX, y: maxY}} = 
-  trace (show is) \_ -> SE.g [] $ catMaybes $ concatMap row (range minY maxY) where
-    row y = map (\x -> drawItems {x:x, y:y} is) (range minX maxX)
-
--- Draw items at a specific position
-drawItems :: forall w i. Pos -> ItemMap -> Maybe (HH.HTML w i)
-drawItems p is = case M.lookup p is of
-  Just items -> Just $ place p $ drawTile items
-  Nothing    -> Nothing
-
--- draw a single tile
--- Only the first item in the list will be displayed (except for collisions)
-drawTile :: forall w i. Array Item -> HH.HTML w i
-drawTile ai = case uncons ai of
-  Just {head: {itemType: Walker_,     time: t1, dir: d1, sel, high, col}, tail: [{itemType: Walker_, time: t2, dir: d2}]} | t1 == t2  -> trace "here" \_-> setAttr sel high col $ getColTile d1 d2 t1                 
-  Just {head: {itemType, time, dir, sel, high, col}, tail: _} -> trace "first" \_-> setAttr sel high col $ getTile itemType dir time 
-  Nothing -> tileEmpty 
-
-setAttr :: forall w i. Maybe Boolean -> Maybe Boolean -> Maybe Int -> HH.HTML i w -> HH.HTML i w 
-setAttr sel high pair h = h --withDefAttr (pairAttr pair) . withDefAttr (selectAttr sel) . withDefAttr (dimAttr high) where
-
+drawItemMap is {first: {x: minX, y: minY}, last: {x: maxX, y: maxY}} = SE.g [] $ map (\{itemType, time, pos} -> place pos (getTile itemType time)) is
 
 lims :: Limits
 lims = {first: {x: 0, y: 0}, last: {x: 9, y: 9}}
 
 
-getItemMap :: STBlock -> Maybe SelItem -> Maybe Step -> ItemMap
-getItemMap u sel st = M.fromFoldableWith (<>) (addAttrs $ getItemMap' u)
-
-addAttrs :: Array (Tuple Pos (Array {itemType:: ItemType, time:: Time, dir:: Dir})) -> Array (Tuple Pos (Array Item))
-addAttrs ai = map (\(Tuple a b) -> (Tuple a (map (\c -> merge c {sel: Nothing, high: Nothing, col: Nothing}) b))) ai
+getItemMap :: STBlock -> Maybe Time -> ItemMap
+getItemMap stb mt = prioTile mt $ getItemMap' stb 
 
 -- Get the various items in Univ 
-getItemMap' :: STBlock -> Array (Tuple Pos (Array {itemType:: ItemType, time:: Time, dir:: Dir})) --ItemMap
-getItemMap' {univ: {portals, emitters, consumers}, walkers: walkers} = ems <> entries <> exits <> ws where
-  ems = map (toTuple Exit) emitters
-  cos = map (toTuple Entry) consumers
-  exits = map (_.exit >>> toTuple ExitPortal ) portals
-  entries = map (_.entry >>> toTuple EntryPortal) portals
-  ws = map (toTuple Walker_) walkers
-  toTuple it {pos, time, dir} = Tuple pos [{itemType: it, time, dir}]
+getItemMap' :: STBlock -> Array Item 
+getItemMap' {univ: {portals, emitters, consumers}, walkers: walkers} = ems <> cos <> ps <> ws where
+  ems = map (\w -> {itemType: Exit w.dir, time: w.time, pos: w.pos}) emitters
+  cos = map (\w -> {itemType: Exit w.dir, time: w.time, pos: w.pos}) consumers
+  ps = concat $ zipWith (\{exit, entry} i -> [{itemType: ExitPortal exit.dir i, time: exit.time, pos: exit.pos}, 
+                                              {itemType: EntryPortal entry.dir i, time: entry.time, pos: entry.pos}]) portals (1..10)
+  ws = map (\w -> {itemType: Walker_ w.dir, time: w.time, pos: w.pos}) walkers
 
- -- dimAttr (Just False) = dimA
- -- dimAttr _ = mempty
- -- selectAttr (Just True) = selA 
- -- selectAttr _ = mempty
- -- pairAttr (Just n) = portalA n
- -- pairAttr _ = mempty
+prioTile ::  Maybe Time -> Array Item -> Array Item
+prioTile mt ai = mapMaybe (minimumBy (prio mt)) $ groupBy ((==) `on` _.pos) $ sortBy (comparing _.pos) $ ai where
+  prio mt {itemType: it1, time: t1} {itemType: it2, time: t2} = compare it1 it2 
+
 
 ---- * Events
 --
