@@ -6,3 +6,11 @@
   display: flex;
   gap: 10px;
 }
+
+.red {
+  filter: invert(16%) sepia(99%) saturate(7453%) hue-rotate(1deg) brightness(105%) contrast(112%);
+}
+
+.blue {
+  filter: invert(7%) sepia(99%) saturate(7493%) hue-rotate(248deg) brightness(116%) contrast(142%);
+}

@@ -20,7 +20,7 @@ import Data.Newtype (class Newtype)
 import Data.Maybe
 import Data.Map as M
 import Data.Tuple (Tuple(..))
-import Data.Array
+import Data.Array hiding (union)
 import Data.Int
 import Data.Traversable (sequence, traverse_)
 import Graphics.Canvas (rect, fillPath, setFillStyle, getContext2D,
@@ -46,11 +46,18 @@ import Data.Ord
 import Data.Array.NonEmpty as ANE
 import Data.NonEmpty as NE
 import Partial.Unsafe
+import Halogen.Subscription as HS
+import Effect.Aff (Milliseconds(..))
+import Effect.Aff as Aff
+import Effect.Aff.Class (class MonadAff)
+import Control.Monad.Rec.Class (forever)
+import Data.EuclideanRing
 
 type Item = {
   itemType :: ItemType,
   pos :: Pos,
-  time :: Time}
+  time :: Time,
+  high :: Boolean}
 
 --derive instance Eq Item
 --instance Ord Item where
@@ -83,7 +90,9 @@ component =
   H.mkComponent
     { initialState
     , render
-    , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
+    , eval: H.mkEval $ H.defaultEval 
+       { handleAction = handleAction,
+         initialize = Just Initialize }
     }
 
 initialState :: forall i. i -> UI
@@ -100,21 +109,27 @@ render state =
           (map (drawBlock $ Just state.stepItem) (getAllSTBlocks state.initUniv))
       ]
 
-data Action = Rotate Int
+data Action = Initialize
+            | Rotate Int
+            | Tick
 
-handleAction :: forall output m. MonadEffect m => Action -> H.HalogenM UI Action () output m Unit
+handleAction :: forall output m. MonadAff m => Action -> H.HalogenM UI Action () output m Unit
 handleAction a = case a of
+  Initialize -> do
+    _ <- H.subscribe =<< timer Tick
+    pure unit
   Rotate a -> do
      H.liftEffect $ logShow "test"
      H.modify_ \a -> a
+  Tick -> H.modify_ \state -> state {stepItem = (state.stepItem + 1) `mod` 10}
 
            
 drawBlock :: forall w i. Maybe Time -> STBlock -> HH.HTML w i
 drawBlock mt block = HH.div [] $ singleton $ 
   SE.svg [SA.height 360.0, SA.width 360.0, SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y)]
          [
-           drawItemMap (getItemMap block mt) lims,
-           SE.image [SA.x 0.0, SA.y 0.0, SA.width 9.0, SA.height 9.0, SA.href "assets/univ_background.svg"]
+           SE.image [SA.x 0.0, SA.y 0.0, SA.width 9.0, SA.height 9.0, SA.href "assets/univ_background.svg"],
+           drawItemMap (getItemMap block mt) lims
          ]
 
 place :: forall w i. Pos -> HH.HTML w i -> HH.HTML w i
@@ -123,40 +138,55 @@ place {x, y} w = SE.g [SA.transform [SAT.Translate (toNumber x) (toNumber y)]] [
 
 -- Draws items
 drawItemMap :: forall w i. ItemMap -> Limits -> HH.HTML w i
-drawItemMap is {first: {x: minX, y: minY}, last: {x: maxX, y: maxY}} = SE.g [] $ map (\{itemType, time, pos} -> place pos (getTile itemType time)) is
+drawItemMap is {first: {x: minX, y: minY}, last: {x: maxX, y: maxY}} = SE.g [] $ map (\{itemType, time, pos, high} -> place pos (getTile itemType time high)) is
 
 lims :: Limits
 lims = {first: {x: 0, y: 0}, last: {x: 9, y: 9}}
 
 
 getItemMap :: STBlock -> Maybe Time -> ItemMap
-getItemMap stb mt = prioTile mt $ getItemMap' stb 
+getItemMap stb mt = selectTopTile mt $ getItemMap' stb mt 
 
 -- Get the various items in Univ 
-getItemMap' :: STBlock -> Array Item 
-getItemMap' {univ: {portals, emitters, consumers}, walkers: walkers} = ems <> cos <> ps <> ws' where
-  ems = map (\w -> {itemType: Exit w.dir, time: w.time, pos: w.pos}) emitters
-  cos = map (\w -> {itemType: Exit w.dir, time: w.time, pos: w.pos}) consumers
-  ps = concat $ zipWith (\{exit, entry} i -> [{itemType: ExitPortal exit.dir i, time: exit.time, pos: exit.pos}, 
-                                              {itemType: EntryPortal entry.dir i, time: entry.time, pos: entry.pos}]) portals (1..10)
-  ws = map (\w -> {itemType: Walker_ w.dir, time: w.time, pos: w.pos}) walkers
-  ws' :: Array Item
+getItemMap' :: STBlock -> Maybe Time -> Array Item 
+getItemMap' {univ: {portals, emitters, consumers}, walkers: walkers} mt = ems <> cos <> ps <> ws' where
+  -- convert STBlock elements into items
+  ems = map (\w -> {itemType: Exit w.dir} `union` {time: w.time, pos: w.pos, high: Just w.time == mt}) emitters
+  cos = map (\w -> {itemType: Exit w.dir, time: w.time, pos: w.pos, high: Just w.time == mt}) consumers
+  ps = concat $ zipWith (\{exit, entry} i -> [{itemType: ExitPortal exit.dir i, time: exit.time, pos: exit.pos, high: Just exit.time == mt}, 
+                                              {itemType: EntryPortal entry.dir i, time: entry.time, pos: entry.pos, high: Just entry.time == mt}]) portals (1..10)
+  ws = map (\w -> {itemType: Walker_ w.dir, time: w.time, pos: w.pos, high: Just w.time == mt}) walkers
+  -- Create collisions for walkers at the same pos
   ws' = map col $ groupBy ((==) `on` (_.pos &&& _.time)) $ sortBy (comparing (_.pos &&& _.time)) $ ws
-  col :: ANE.NonEmptyArray Item -> Item
   col as = if ANE.length as == 1 
              then ANE.head as
-             else {itemType: Collision (map getWalkerDir as), time: _.time $ ANE.head as, pos: _.pos $ ANE.head as}
+             else {itemType: Collision (map getWalkerDir as), time: _.time $ ANE.head as, pos: _.pos $ ANE.head as, high: Just (_.time $ ANE.head as) == mt}
+  
 
-prioTile ::  Maybe Time -> Array Item -> Array Item
-prioTile mt ai = mapMaybe (minimumBy (prio mt)) $ groupBy ((==) `on` _.pos) $ sortBy (comparing _.pos) $ ai where
-  prio mt {itemType: it1, time: t1} {itemType: it2, time: t2} = compare it1 it2 --TODO 
+--Removes overlapped tiles, by selecting the top one
+--ItemType is selected by Ord priority, furthermore items which matches the current time gets priority
+selectTopTile ::  Maybe Time -> Array Item -> Array Item
+selectTopTile mt ai = mapMaybe (minimumBy (prio mt)) $ groupBy ((==) `on` _.pos) $ sortBy (comparing _.pos) $ ai where
+  prio mt = comparing ((_.time >>> Just >>> ((==) mt)) &&& _.itemType) 
 
 
 getWalkerDir :: Item -> Dir
 getWalkerDir {itemType: Walker_ d} = d
 getWalkerDir _ = unsafeCrashWith "bug"
 
----- * Events
+
+
+-- * Events
+
+timer :: forall m a. MonadAff m => a -> m (HS.Emitter a)
+timer val = do
+  { emitter, listener } <- H.liftEffect HS.create
+  _ <- H.liftAff $ Aff.forkAff $ forever do
+    Aff.delay $ Milliseconds 1000.0
+    H.liftEffect $ HS.notify listener val
+  pure emitter
+
+
 --
 --handleEvent  :: BrickEvent () Tick -> EventM () UI ()
 --handleEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
