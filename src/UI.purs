@@ -40,6 +40,12 @@ import Data.Array.Partial as AP
 import Data.Foldable
 import Data.Function
 import Data.Array.NonEmpty as AN
+import Data.Profunctor.Strong
+import Data.Eq
+import Data.Ord
+import Data.Array.NonEmpty as ANE
+import Data.NonEmpty as NE
+import Partial.Unsafe
 
 type Item = {
   itemType :: ItemType,
@@ -128,17 +134,27 @@ getItemMap stb mt = prioTile mt $ getItemMap' stb
 
 -- Get the various items in Univ 
 getItemMap' :: STBlock -> Array Item 
-getItemMap' {univ: {portals, emitters, consumers}, walkers: walkers} = ems <> cos <> ps <> ws where
+getItemMap' {univ: {portals, emitters, consumers}, walkers: walkers} = ems <> cos <> ps <> ws' where
   ems = map (\w -> {itemType: Exit w.dir, time: w.time, pos: w.pos}) emitters
   cos = map (\w -> {itemType: Exit w.dir, time: w.time, pos: w.pos}) consumers
   ps = concat $ zipWith (\{exit, entry} i -> [{itemType: ExitPortal exit.dir i, time: exit.time, pos: exit.pos}, 
                                               {itemType: EntryPortal entry.dir i, time: entry.time, pos: entry.pos}]) portals (1..10)
   ws = map (\w -> {itemType: Walker_ w.dir, time: w.time, pos: w.pos}) walkers
+  ws' :: Array Item
+  ws' = map col $ groupBy ((==) `on` (_.pos &&& _.time)) $ sortBy (comparing (_.pos &&& _.time)) $ ws
+  col :: ANE.NonEmptyArray Item -> Item
+  col as = if ANE.length as == 1 
+             then ANE.head as
+             else {itemType: Collision (map getWalkerDir as), time: _.time $ ANE.head as, pos: _.pos $ ANE.head as}
 
 prioTile ::  Maybe Time -> Array Item -> Array Item
 prioTile mt ai = mapMaybe (minimumBy (prio mt)) $ groupBy ((==) `on` _.pos) $ sortBy (comparing _.pos) $ ai where
-  prio mt {itemType: it1, time: t1} {itemType: it2, time: t2} = compare it1 it2 
+  prio mt {itemType: it1, time: t1} {itemType: it2, time: t2} = compare it1 it2 --TODO 
 
+
+getWalkerDir :: Item -> Dir
+getWalkerDir {itemType: Walker_ d} = d
+getWalkerDir _ = unsafeCrashWith "bug"
 
 ---- * Events
 --

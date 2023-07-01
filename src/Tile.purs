@@ -19,15 +19,8 @@ import CSS.Color
 import CSS.Font
 import Data.Show.Generic
 import Data.Generic.Rep
+import Data.Array.NonEmpty as ANE
 
-
---tilePortal :: forall w i. Boolean -> Dir -> Time -> HTML w i
---tilePortal in_ dir time = SE.svg [SA.height 36.0, SA.width 36.0, SA.viewBox 0.0 0.0 36.0 36.0] 
---  [SE.text [SA.x 12.0, SA.y 24.0] [HH.text (show time)],
---   SE.rect [SA.x 3.0, SA.y 3.0, SA.width 30.0, SA.height 30.0, SA.stroke (SA.Named "black"), SA.fill SA.NoColor],
---   SE.text (tilePos side) [HH.text (showArr dir)]
---  ] where 
---     side = if in_ then turnRel Back dir else dir 
 
 tileX = 36.0
 tileY = 36.0
@@ -38,7 +31,7 @@ data ItemType = EntryPortal Dir Int
               | Entry Dir
               | Exit Dir 
               | Walker_ Dir
-              | Collision Dir Dir
+              | Collision (ANE.NonEmptyArray Dir)
 
 derive instance Generic ItemType _
 derive instance Eq ItemType
@@ -58,17 +51,15 @@ getTile it time = SE.svg [SA.height 1.0, SA.width 1.0, SA.viewBox 0.0 0.0 tileX 
                           getTime time]
 
 getTile' :: forall w i. ItemType -> HTML w i
-getTile' (EntryPortal dir link) = getAsset dir "assets/entry_portal.svg"
-getTile' (ExitPortal dir link)  = getAsset dir "assets/exit_portal.svg"
-getTile' (Entry dir)            = getAsset dir "assets/entry.svg"
-getTile' (Exit dir)             = getAsset dir "assets/exit.svg"
-getTile' (Walker_ dir)          = getAsset dir "assets/walker.svg"
-getTile' (Collision d1 d2)      = SE.g [] 
-                                       [getAsset d1 "assets/col.svg",
-                                        getAsset d2 "assets/col.svg"]
+getTile' (EntryPortal dir link) = getAsset "assets/entry_portal.svg" dir 
+getTile' (ExitPortal dir link)  = getAsset "assets/exit_portal.svg"  dir 
+getTile' (Entry dir)            = getAsset "assets/entry.svg"        dir 
+getTile' (Exit dir)             = getAsset "assets/exit.svg"         dir 
+getTile' (Walker_ dir)          = getAsset "assets/walker.svg"       dir 
+getTile' (Collision ds)         = SE.g [] $ ANE.toArray $ map (getAsset "assets/col.svg") ds
                               
-getAsset :: forall w i. Dir -> String -> HTML w i
-getAsset dir asset = SE.g [SA.transform [SAT.Rotate (rotateDir dir) (tileX / 2.0) (tileY / 2.0)]] 
+getAsset :: forall w i. String -> Dir -> HTML w i
+getAsset asset dir = SE.g [SA.transform [SAT.Rotate (rotateDir dir) (tileX / 2.0) (tileY / 2.0)]] 
                           [SE.image [SA.x 0.0, SA.y 0.0, SA.width tileX, SA.height tileY, SA.href $ asset]]
 
 getTime :: forall w i. Time -> HTML w i
