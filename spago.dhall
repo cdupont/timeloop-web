@@ -22,6 +22,7 @@
   , "partial"
   , "prelude"
   , "profunctor"
+  , "profunctor-lenses"
   , "record"
   , "svg-parser-halogen"
   , "tailrec"

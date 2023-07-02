@@ -26,7 +26,6 @@ import Data.Traversable (sequence, traverse_)
 import Graphics.Canvas (rect, fillPath, setFillStyle, getContext2D,
                         getCanvasElementById, Context2D, fillRect)
 
-import Halogen.Svg.Attributes (Color(..))
 import Halogen.Svg.Attributes as SA
 import Halogen.Svg.Elements as SE
 import Halogen.Svg.Attributes.Transform as SAT
@@ -52,40 +51,11 @@ import Effect.Aff as Aff
 import Effect.Aff.Class (class MonadAff)
 import Control.Monad.Rec.Class (forever)
 import Data.EuclideanRing
-
-type Item = {
-  itemType :: ItemType,
-  pos :: Pos,
-  time :: Time,
-  high :: Boolean}
-
---derive instance Eq Item
---instance Ord Item where
---  compare {itemType: it1, time: t1} {itemType: it2, time: t2} = undefined
-
-type ItemMap = Array Item
-
-type SelItem = {
-  itemType  :: ItemType,
-  itemIndex :: Int}
-
-type Step = Int
-
-type UI = {
-  initUniv :: Univ,
-  selItem  :: Maybe Int, -- Which item is selected
-  stepItem :: Step,          -- A time step counter
-  config   :: Config}   
-
-type Config = {
-  showSols :: Boolean,
-  showWrongTrajs :: Boolean}
-
-
-tileX = 36.0
-tileY = 36.0
-
+import Types
+import Data.Lens
+import Data.Lens.Index
 -- * Main app
+
 component =
   H.mkComponent
     { initialState
@@ -96,7 +66,7 @@ component =
     }
 
 initialState :: forall i. i -> UI
-initialState _ = {initUniv: univ2, selItem: Just 0, stepItem: 0, config: {showSols: false, showWrongTrajs: false}}
+initialState _ = {initUniv: univ2, stepItem: 0, config: {showSols: false, showWrongTrajs: false}}
 
 render :: forall w. UI -> HH.HTML w Action
 render state =
@@ -109,22 +79,8 @@ render state =
           (map (drawBlock $ Just state.stepItem) (getAllSTBlocks state.initUniv))
       ]
 
-data Action = Initialize
-            | Rotate Int
-            | Tick
-
-handleAction :: forall output m. MonadAff m => Action -> H.HalogenM UI Action () output m Unit
-handleAction a = case a of
-  Initialize -> do
-    _ <- H.subscribe =<< timer Tick
-    pure unit
-  Rotate a -> do
-     H.liftEffect $ logShow "test"
-     H.modify_ \a -> a
-  Tick -> H.modify_ \state -> state {stepItem = (state.stepItem + 1) `mod` 10}
-
            
-drawBlock :: forall w i. Maybe Time -> STBlock -> HH.HTML w i
+drawBlock :: forall w. Maybe Time -> STBlock -> HH.HTML w Action
 drawBlock mt block = HH.div [] $ singleton $ 
   SE.svg [SA.height 360.0, SA.width 360.0, SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y)]
          [
@@ -132,13 +88,10 @@ drawBlock mt block = HH.div [] $ singleton $
            drawItemMap (getItemMap block mt) lims
          ]
 
-place :: forall w i. Pos -> HH.HTML w i -> HH.HTML w i
-place {x, y} w = SE.g [SA.transform [SAT.Translate (toNumber x) (toNumber y)]] [w]
-
 
 -- Draws items
-drawItemMap :: forall w i. ItemMap -> Limits -> HH.HTML w i
-drawItemMap is {first: {x: minX, y: minY}, last: {x: maxX, y: maxY}} = SE.g [] $ map (\{itemType, time, pos, high} -> place pos (getTile itemType time high)) is
+drawItemMap :: forall w. ItemMap -> Limits -> HH.HTML w Action
+drawItemMap is {first: {x: minX, y: minY}, last: {x: maxX, y: maxY}} = SE.g [] $ map getTile is
 
 lims :: Limits
 lims = {first: {x: 0, y: 0}, last: {x: 9, y: 9}}
@@ -149,19 +102,30 @@ getItemMap stb mt = selectTopTile mt $ getItemMap' stb mt
 
 -- Get the various items in Univ 
 getItemMap' :: STBlock -> Maybe Time -> Array Item 
-getItemMap' {univ: {portals, emitters, consumers}, walkers: walkers} mt = ems <> cos <> ps <> ws' where
+getItemMap' {univ: {portals, emitters, consumers}, walkers: walkers} mt = ems <> cos <> ps <> ws where
   -- convert STBlock elements into items
-  ems = map (\w -> {itemType: Exit w.dir} `union` {time: w.time, pos: w.pos, high: Just w.time == mt}) emitters
-  cos = map (\w -> {itemType: Exit w.dir, time: w.time, pos: w.pos, high: Just w.time == mt}) consumers
-  ps = concat $ zipWith (\{exit, entry} i -> [{itemType: ExitPortal exit.dir i, time: exit.time, pos: exit.pos, high: Just exit.time == mt}, 
-                                              {itemType: EntryPortal entry.dir i, time: entry.time, pos: entry.pos, high: Just entry.time == mt}]) portals (1..10)
-  ws = map (\w -> {itemType: Walker_ w.dir, time: w.time, pos: w.pos, high: Just w.time == mt}) walkers
-  -- Create collisions for walkers at the same pos
-  ws' = map col $ groupBy ((==) `on` (_.pos &&& _.time)) $ sortBy (comparing (_.pos &&& _.time)) $ ws
+  ems = zipWith (getItem Exit mt Black) emitters (0..10)
+  cos = zipWith (getItem Entry mt Black) consumers (0..10)
+  ps = concat $ zipWith (\{exit, entry} i -> [getItem ExitPortal  mt (toColor $ i+1) exit  i, 
+                                              getItem EntryPortal mt (toColor $ i+1) entry i]) portals (0..10)
+  ws = map col $ groupBy ((==) `on` (_.pos &&& _.time)) $ sortBy (comparing (_.pos &&& _.time)) $ walkers 
+  -- Create collisions for walkers at the same pos and time
   col as = if ANE.length as == 1 
-             then ANE.head as
-             else {itemType: Collision (map getWalkerDir as), time: _.time $ ANE.head as, pos: _.pos $ ANE.head as, high: Just (_.time $ ANE.head as) == mt}
-  
+             then getItem' Walker_   mt Black as 0
+             else getItem' Collision mt Black as 0
+
+getItem :: ItemType -> Maybe Time -> Color -> PTD -> Int -> Item
+getItem  it mt c ptd i = getItem' it mt c (ANE.singleton ptd) i
+
+getItem' :: ItemType -> Maybe Time -> Color -> ANE.NonEmptyArray PTD -> Int -> Item
+getItem' it mt c ptds i = {itemType:  it, 
+                           itemIndex: i, 
+                           pos:       first.pos,
+                           dirs:      map _.dir ptds, 
+                           time:      first.time, 
+                           high:      Just first.time == mt,
+                           col:       c} where
+  first = ANE.head ptds
 
 --Removes overlapped tiles, by selecting the top one
 --ItemType is selected by Ord priority, furthermore items which matches the current time gets priority
@@ -170,13 +134,19 @@ selectTopTile mt ai = mapMaybe (minimumBy (prio mt)) $ groupBy ((==) `on` _.pos)
   prio mt = comparing ((_.time >>> Just >>> ((==) mt)) &&& _.itemType) 
 
 
-getWalkerDir :: Item -> Dir
-getWalkerDir {itemType: Walker_ d} = d
-getWalkerDir _ = unsafeCrashWith "bug"
-
-
 
 -- * Events
+
+handleAction :: forall output m. MonadAff m => Action -> H.HalogenM UI Action () output m Unit
+handleAction a = case a of
+  Initialize -> do
+    _ <- H.subscribe =<< timer Tick
+    pure unit
+  Rotate it i -> do
+     H.liftEffect $ logShow "test"
+     H.modify_ $ updateUI it i rotate
+  Tick -> H.modify_ \state -> state {stepItem = (state.stepItem + 1) `mod` 10}
+
 
 timer :: forall m a. MonadAff m => a -> m (HS.Emitter a)
 timer val = do
@@ -227,9 +197,9 @@ timer val = do
 --movePos E (PTD (Pos x y) t d) = PTD (Pos (x+1) y) t d 
 --movePos W (PTD (Pos x y) t d) = PTD (Pos (x-1) y) t d 
 --
---rotate :: UI -> UI
---rotate = updateUI (turn' Right_)
---
+rotate :: PTD -> PTD
+rotate = turn' Right_
+
 --changeTime :: Bool -> UI -> UI
 --changeTime b = updateUI (changeTime' b)
 --
@@ -272,14 +242,14 @@ timer val = do
 --
 --deleteAt i xs = ls ++ rs
 --  where (ls, _:rs) = splitAt i xs
---
---updateUI :: (PTD -> PTD) -> UI -> UI
---updateUI f ui@(UI _ (Just (SelItem EntryPortal i)) _ _) = over (#initUniv % #portals % ix i % #entry % #unSink) f ui
---updateUI f ui@(UI _ (Just (SelItem ExitPortal i)) _ _)  = over (#initUniv % #portals % ix i % #exit % #unSource) f ui
---updateUI f ui@(UI _ (Just (SelItem Entry i)) _ _)       = over (#initUniv % #emitters % ix i % #unSource) f ui
---updateUI f ui@(UI _ (Just (SelItem Exit i)) _ _)        = over (#initUniv % #consumers % ix i % #unSink) f ui
---updateUI f ui = ui
---
+
+updateUI :: ItemType -> Int -> (PTD -> PTD) -> UI -> UI
+updateUI EntryPortal i = over (_initUniv <<< _portals <<< ix (spy "i" i) <<< _entry) 
+--updateUI ExitPortal i f  = over (#initUniv % #portals % ix i % #exit % #unSource) f ui
+--updateUI Entry i f       = over (#initUniv % #emitters % ix i % #unSource) f ui
+--updateUI Exit i f        = over (#initUniv % #consumers % ix i % #unSink) f ui
+updateUI _ _ = undefined
+
 --increaseStep :: UI -> UI
 --increaseStep (UI ps s st c)  = UI ps s (st+1) c
 --

@@ -12,6 +12,9 @@ import Data.Bounded.Generic
 import Data.Show
 import Data.Show.Generic
 import Data.Generic.Rep
+import Data.Lens
+import Data.Lens.Record
+import Type.Proxy
 
 data Dir = N | E | S | W 
 
@@ -61,6 +64,9 @@ type Portal = {
   exit  :: Source}
 --  deriving (Eq, Ord, Show, Generic)
 
+_entry :: forall a r. Lens' { entry :: a | r } a
+_entry = prop (Proxy :: Proxy "entry")
+
 -- A Univers contains some portals linking distant points in the spacetime block.
 -- It also contains emitters and consumers which are point emitting or consuming one walker.
 type Univ = {
@@ -68,6 +74,9 @@ type Univ = {
   emitters :: Array Source,
   consumers :: Array Sink}
 --  deriving (Eq, Ord, Show, Generic)
+
+_portals :: forall a r. Lens' { portals :: a | r } a
+_portals = prop (Proxy :: Proxy "portals")
 
 -- A STBlock is infinite and flat spacetime block universe.
 -- It contains some "Walkers" which are particules that moves in a straight line.
