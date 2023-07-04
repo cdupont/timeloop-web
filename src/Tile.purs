@@ -24,8 +24,12 @@ import Data.Generic.Rep
 import Data.Array.NonEmpty as ANE
 import Data.Enum
 import Data.Maybe
+import Data.Monoid
 import Types
 import Data.Int
+import Debug
+import Web.UIEvent.MouseEvent
+import Web.UIEvent.WheelEvent
 
 tileX = 36.0
 tileY = 36.0
@@ -56,22 +60,29 @@ asset Walker_     = "assets/walker.svg"
 asset Collision   = "assets/col.svg"      
 
 timeAsset = "assets/time.svg"
+selAsset = "assets/sel.svg"
 
+-- Get the tile with position, events and highlight
 getTile :: forall w. Item -> HTML w Action 
-getTile {itemType, itemIndex, pos, dirs, time, high, col} = 
---  HH.div [HE.onClick \_ -> Rotate itemType itemIndex] 
-         SE.g [SA.transform [SAT.Translate (toNumber pos.x) (toNumber pos.y)],
-               HE.onClick \_ -> Rotate itemType itemIndex] 
-               [SE.svg [SA.height 1.0, SA.width 1.0, SA.viewBox 0.0 0.0 tileX tileY] 
-                       [if high then getAssetImage timeAsset else SE.text [] [HH.text ""],
-                        getTile' itemType time col dirs]
-               ]
+getTile {itemType, itemIndex, pos, dirs, time, high, col, sel} = 
+  SE.g [SA.transform [SAT.Translate (toNumber pos.x) (toNumber pos.y)],
+        HE.onClick \e -> if ctrlKey e then Rotate {itemType, itemIndex} else Select {itemType, itemIndex},
+        HE.onWheel \e -> trace (show $ deltaY e) \_ -> ChangeTime {itemType, itemIndex} true
+        ] 
+        [
+          SE.svg [SA.height 1.0, SA.width 1.0, SA.viewBox 0.0 0.0 tileX tileY] $ 
+                  (guard high [getAssetImage timeAsset]) <>
+                  [getTile' itemType time col dirs] <>
+                  (guard sel [getAssetImage selAsset])
+        ]
          
 
+-- Get the tile including collisions
 getTile' :: forall w i. ItemType -> Time -> Color -> ANE.NonEmptyArray Dir -> HTML w i
 getTile' Collision  t col ds = SE.g [] $ ANE.toArray $ map (getTile'' (asset Collision) col t) ds
 getTile' it t col ds         = getTile'' (asset it) col t (ANE.head ds)
-                              
+
+-- Get the tile with its color, time index and orientation
 getTile'' :: forall w i. String -> Color -> Time -> Dir -> HTML w i
 getTile'' asset col time dir = SE.g [SA.class_ $ getColorClass col] 
                                     [

@@ -66,6 +66,8 @@ type Portal = {
 
 _entry :: forall a r. Lens' { entry :: a | r } a
 _entry = prop (Proxy :: Proxy "entry")
+_exit :: forall a r. Lens' { exit :: a | r } a
+_exit = prop (Proxy :: Proxy "exit")
 
 -- A Univers contains some portals linking distant points in the spacetime block.
 -- It also contains emitters and consumers which are point emitting or consuming one walker.
@@ -77,6 +79,10 @@ type Univ = {
 
 _portals :: forall a r. Lens' { portals :: a | r } a
 _portals = prop (Proxy :: Proxy "portals")
+_emitters :: forall a r. Lens' { emitters :: a | r } a
+_emitters = prop (Proxy :: Proxy "emitters")
+_consumers :: forall a r. Lens' { consumers :: a | r } a
+_consumers = prop (Proxy :: Proxy "consumers")
 
 -- A STBlock is infinite and flat spacetime block universe.
 -- It contains some "Walkers" which are particules that moves in a straight line.

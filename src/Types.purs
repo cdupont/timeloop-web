@@ -9,6 +9,7 @@ import Data.Generic.Rep
 import Data.Lens
 import Data.Lens.Record
 import Type.Proxy
+import Data.Maybe
 
 data ItemType = EntryPortal
               | ExitPortal
@@ -32,6 +33,7 @@ type Item = {
   dirs :: ANE.NonEmptyArray Dir,
   time :: Time,
   high :: Boolean,
+  sel  :: Boolean,
   col :: Color}
 
 type ItemMap = Array Item
@@ -39,6 +41,7 @@ type ItemMap = Array Item
 type UI = {
   initUniv :: Univ,
   stepItem :: Time,          -- A time step counter
+  selItem  :: Maybe SelItem, 
   config   :: Config}   
 
 _initUniv :: forall a r. Lens' { initUniv :: a | r } a
@@ -48,7 +51,14 @@ type Config = {
   showSols :: Boolean,
   showWrongTrajs :: Boolean}
 
+type SelItem = {
+  itemType  :: ItemType,
+  itemIndex :: Int}
+
 data Action = Initialize
-            | Rotate ItemType Int
+            | Rotate SelItem 
+            | ChangeTime SelItem Boolean
+            | Select SelItem
             | Tick
+            | Noop
 

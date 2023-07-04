@@ -66,26 +66,26 @@ component =
     }
 
 initialState :: forall i. i -> UI
-initialState _ = {initUniv: univ2, stepItem: 0, config: {showSols: false, showWrongTrajs: false}}
+initialState _ = {initUniv: univ2, stepItem: 0, selItem: Just {itemType: EntryPortal, itemIndex: 0}, config: {showSols: false, showWrongTrajs: false}}
 
 render :: forall w. UI -> HH.HTML w Action
 render state =
     HH.div []
       [ HH.div [HP.class_ (ClassName "config")] --, HE.onClick \_ -> Test] 
           [ 
-          drawBlock Nothing {univ: state.initUniv, walkers: []}
+          drawBlock Nothing state.selItem {univ: state.initUniv, walkers: []}
           ],
         HH.div [HP.class_ (ClassName "solutions")] 
-          (map (drawBlock $ Just state.stepItem) (getAllSTBlocks state.initUniv))
+          (map (drawBlock (Just state.stepItem) Nothing) (getValidSTBlocks state.initUniv))
       ]
 
            
-drawBlock :: forall w. Maybe Time -> STBlock -> HH.HTML w Action
-drawBlock mt block = HH.div [] $ singleton $ 
+drawBlock :: forall w. Maybe Time -> Maybe SelItem -> STBlock -> HH.HTML w Action
+drawBlock mt sel block = HH.div [] $ singleton $ 
   SE.svg [SA.height 360.0, SA.width 360.0, SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y)]
          [
            SE.image [SA.x 0.0, SA.y 0.0, SA.width 9.0, SA.height 9.0, SA.href "assets/univ_background.svg"],
-           drawItemMap (getItemMap block mt) lims
+           drawItemMap (getItemMap block mt sel) lims
          ]
 
 
@@ -97,34 +97,35 @@ lims :: Limits
 lims = {first: {x: 0, y: 0}, last: {x: 9, y: 9}}
 
 
-getItemMap :: STBlock -> Maybe Time -> ItemMap
-getItemMap stb mt = selectTopTile mt $ getItemMap' stb mt 
+getItemMap :: STBlock -> Maybe Time -> Maybe SelItem -> ItemMap
+getItemMap stb mt sel = selectTopTile mt $ getItemMap' stb mt sel
 
 -- Get the various items in Univ 
-getItemMap' :: STBlock -> Maybe Time -> Array Item 
-getItemMap' {univ: {portals, emitters, consumers}, walkers: walkers} mt = ems <> cos <> ps <> ws where
+getItemMap' :: STBlock -> Maybe Time -> Maybe SelItem -> Array Item 
+getItemMap' {univ: {portals, emitters, consumers}, walkers: walkers} mt sel = ems <> cos <> ps <> ws where
   -- convert STBlock elements into items
-  ems = zipWith (getItem Exit mt Black) emitters (0..10)
-  cos = zipWith (getItem Entry mt Black) consumers (0..10)
-  ps = concat $ zipWith (\{exit, entry} i -> [getItem ExitPortal  mt (toColor $ i+1) exit  i, 
-                                              getItem EntryPortal mt (toColor $ i+1) entry i]) portals (0..10)
+  ems = zipWith (getItem Exit mt Black sel) emitters (0..10)
+  cos = zipWith (getItem Entry mt Black sel) consumers (0..10)
+  ps = concat $ zipWith (\{exit, entry} i -> [getItem ExitPortal  mt (toColor $ i+1) sel exit  i, 
+                                              getItem EntryPortal mt (toColor $ i+1) sel entry i]) portals (0..10)
   ws = map col $ groupBy ((==) `on` (_.pos &&& _.time)) $ sortBy (comparing (_.pos &&& _.time)) $ walkers 
   -- Create collisions for walkers at the same pos and time
   col as = if ANE.length as == 1 
-             then getItem' Walker_   mt Black as 0
-             else getItem' Collision mt Black as 0
+             then getItem' Walker_   mt Black Nothing as 0 
+             else getItem' Collision mt Black Nothing as 0
 
-getItem :: ItemType -> Maybe Time -> Color -> PTD -> Int -> Item
-getItem  it mt c ptd i = getItem' it mt c (ANE.singleton ptd) i
+getItem :: ItemType -> Maybe Time -> Color -> Maybe SelItem -> PTD -> Int -> Item
+getItem  it mt c sel ptd i = getItem' it mt c sel (ANE.singleton ptd) i
 
-getItem' :: ItemType -> Maybe Time -> Color -> ANE.NonEmptyArray PTD -> Int -> Item
-getItem' it mt c ptds i = {itemType:  it, 
-                           itemIndex: i, 
-                           pos:       first.pos,
-                           dirs:      map _.dir ptds, 
-                           time:      first.time, 
-                           high:      Just first.time == mt,
-                           col:       c} where
+getItem' :: ItemType -> Maybe Time -> Color -> Maybe SelItem -> ANE.NonEmptyArray PTD -> Int -> Item
+getItem' it mt c sel ptds i = {itemType:  it, 
+                               itemIndex: i, 
+                               pos:       first.pos,
+                               dirs:      map _.dir ptds, 
+                               time:      first.time, 
+                               high:      Just first.time == mt,
+                               col:       c,
+                               sel:       sel == Just {itemType: it, itemIndex: i}} where
   first = ANE.head ptds
 
 --Removes overlapped tiles, by selecting the top one
@@ -142,10 +143,13 @@ handleAction a = case a of
   Initialize -> do
     _ <- H.subscribe =<< timer Tick
     pure unit
-  Rotate it i -> do
+  Rotate se -> do
      H.liftEffect $ logShow "test"
-     H.modify_ $ updateUI it i rotate
+     H.modify_ $ updateUI se rotate
+  ChangeTime se isPlus -> H.modify_ $ updateUI se $ changeTime isPlus
+  Select se -> H.modify_ \state -> state {selItem = Just se}
   Tick -> H.modify_ \state -> state {stepItem = (state.stepItem + 1) `mod` 10}
+  Noop -> pure unit
 
 
 timer :: forall m a. MonadAff m => a -> m (HS.Emitter a)
@@ -156,57 +160,22 @@ timer val = do
     H.liftEffect $ HS.notify listener val
   pure emitter
 
-
---
---handleEvent  :: BrickEvent () Tick -> EventM () UI ()
---handleEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
---handleEvent (VtyEvent (V.EvKey V.KEsc        [])) = halt
---handleEvent (VtyEvent (V.EvKey V.KRight      [])) = modify $ move' E
---handleEvent (VtyEvent (V.EvKey V.KLeft       [])) = modify $ move' W
---handleEvent (VtyEvent (V.EvKey V.KUp         [])) = modify $ move' N 
---handleEvent (VtyEvent (V.EvKey V.KDown       [])) = modify $ move' S 
---handleEvent (VtyEvent (V.EvKey (V.KChar 'r') [])) = modify rotate 
---handleEvent (VtyEvent (V.EvKey (V.KChar '+') [])) = modify $ changeTime True 
---handleEvent (VtyEvent (V.EvKey (V.KChar '-') [])) = modify $ changeTime False
---handleEvent (VtyEvent (V.EvKey (V.KChar ' ') [])) = modify changeItem
---handleEvent (VtyEvent (V.EvKey (V.KChar 'p') [])) = modify addPortal
---handleEvent (VtyEvent (V.EvKey (V.KChar 'e') [])) = modify addEmmiter
---handleEvent (VtyEvent (V.EvKey (V.KChar 'd') [])) = modify delItem 
---handleEvent (VtyEvent (V.EvKey V.KEnter      [])) = modify showSolutions 
---handleEvent (VtyEvent (V.EvKey (V.KChar 'w') [])) = modify showWrongTrajectories 
---handleEvent (VtyEvent (V.EvKey (V.KChar '1') [])) = modify $ solution univ1
---handleEvent (VtyEvent (V.EvKey (V.KChar '2') [])) = modify $ solution univ2
---handleEvent (VtyEvent (V.EvKey (V.KChar '3') [])) = modify $ solution univ3
---handleEvent (VtyEvent (V.EvKey (V.KChar '4') [])) = modify $ solution univ4
---handleEvent (VtyEvent (V.EvKey (V.KChar '5') [])) = modify $ solution univ5
---handleEvent (VtyEvent (V.EvKey (V.KChar '6') [])) = modify $ solution univ6
---handleEvent (VtyEvent (V.EvKey (V.KChar '7') [])) = modify $ solution univ7
---handleEvent (AppEvent Tick                      ) = modify increaseStep
---handleEvent _ = return ()
---
---
 --solution :: Univ -> UI -> UI
 --solution u ui = set #initUniv u ui
---
---move' :: Dir -> UI -> UI
---move' d = updateUI (movePos d)
---
---movePos :: Dir -> PTD -> PTD
---movePos N (PTD (Pos x y) t d) = PTD (Pos x (y+1)) t d 
---movePos S (PTD (Pos x y) t d) = PTD (Pos x (y-1)) t d 
---movePos E (PTD (Pos x y) t d) = PTD (Pos (x+1) y) t d 
---movePos W (PTD (Pos x y) t d) = PTD (Pos (x-1) y) t d 
---
+
+movePos :: Dir -> PTD -> PTD
+movePos N ptd = ptd {pos {y = ptd.pos.y +1}}  
+movePos S ptd = ptd {pos {y = ptd.pos.y -1}}  
+movePos E ptd = ptd {pos {y = ptd.pos.x +1}}  
+movePos W ptd = ptd {pos {y = ptd.pos.x -1}}  
+
 rotate :: PTD -> PTD
 rotate = turn' Right_
 
---changeTime :: Bool -> UI -> UI
---changeTime b = updateUI (changeTime' b)
---
---changeTime' :: Bool -> PTD -> PTD
---changeTime' True  (PTD p t d) = PTD p (t+1) d
---changeTime' False (PTD p t d) = PTD p (t-1) d
---
+changeTime :: Boolean -> PTD -> PTD
+changeTime true  ptd  = ptd {time = ptd.time + 1}
+changeTime false  ptd = ptd {time = ptd.time - 1}
+
 --changeItem :: UI -> UI
 --changeItem ui@(UI u s _ _) = ui {selItem = nextSel (getSels u) s} 
 -- 
@@ -243,12 +212,12 @@ rotate = turn' Right_
 --deleteAt i xs = ls ++ rs
 --  where (ls, _:rs) = splitAt i xs
 
-updateUI :: ItemType -> Int -> (PTD -> PTD) -> UI -> UI
-updateUI EntryPortal i = over (_initUniv <<< _portals <<< ix (spy "i" i) <<< _entry) 
---updateUI ExitPortal i f  = over (#initUniv % #portals % ix i % #exit % #unSource) f ui
---updateUI Entry i f       = over (#initUniv % #emitters % ix i % #unSource) f ui
---updateUI Exit i f        = over (#initUniv % #consumers % ix i % #unSink) f ui
-updateUI _ _ = undefined
+updateUI :: SelItem -> (PTD -> PTD) -> UI -> UI
+updateUI {itemType: EntryPortal, itemIndex: i} = over (_initUniv <<< _portals <<< ix (spy "i" i) <<< _entry) 
+updateUI {itemType: ExitPortal, itemIndex: i} = over (_initUniv <<< _portals <<< ix (spy "i" i) <<< _exit) 
+updateUI {itemType: Entry, itemIndex: i} = over (_initUniv <<< _emitters <<< ix (spy "i" i)) 
+updateUI {itemType: Exit, itemIndex: i} = over (_initUniv <<< _consumers <<< ix (spy "i" i)) 
+updateUI _ = undefined
 
 --increaseStep :: UI -> UI
 --increaseStep (UI ps s st c)  = UI ps s (st+1) c
