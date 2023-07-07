@@ -10,6 +10,7 @@ import Data.Lens
 import Data.Lens.Record
 import Type.Proxy
 import Data.Maybe
+import Web.Event.Event (Event)
 
 data ItemType = EntryPortal
               | ExitPortal
@@ -56,9 +57,11 @@ type SelItem = {
   itemIndex :: Int}
 
 data Action = Initialize
+            | Select (Maybe SelItem)
             | Rotate SelItem 
             | ChangeTime SelItem Boolean
-            | Select SelItem
+            | Move SelItem Dir
+            | StopPropagation Event Action
             | Tick
             | Noop
 

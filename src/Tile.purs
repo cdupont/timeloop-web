@@ -30,6 +30,7 @@ import Data.Int
 import Debug
 import Web.UIEvent.MouseEvent
 import Web.UIEvent.WheelEvent
+import Web.UIEvent.KeyboardEvent as KBE
 
 tileX = 36.0
 tileY = 36.0
@@ -62,12 +63,23 @@ asset Collision   = "assets/col.svg"
 timeAsset = "assets/time.svg"
 selAsset = "assets/sel.svg"
 
+keyDown :: KBE.KeyboardEvent -> SelItem-> Action
+keyDown ke se = case (KBE.key ke) of
+  "ArrowUp"    -> Move se N
+  "ArrowDown"  -> Move se S
+  "ArrowRight" -> Move se E
+  "ArrowLeft"  -> Move se W
+  "r"          -> Rotate se
+  _            -> Noop
+
 -- Get the tile with position, events and highlight
 getTile :: forall w. Item -> HTML w Action 
 getTile {itemType, itemIndex, pos, dirs, time, high, col, sel} = 
-  SE.g [SA.transform [SAT.Translate (toNumber pos.x) (toNumber pos.y)],
-        HE.onClick \e -> if ctrlKey e then Rotate {itemType, itemIndex} else Select {itemType, itemIndex},
-        HE.onWheel \e -> trace (show $ deltaY e) \_ -> ChangeTime {itemType, itemIndex} true
+  SE.g [SA.class_ $ ClassName "tile",
+        SA.transform [SAT.Translate (toNumber pos.x) (toNumber pos.y)],
+        HE.onClick \e -> Select $ Just {itemType, itemIndex},
+        HE.onKeyDown \e -> StopPropagation (KBE.toEvent e) $ keyDown e {itemType, itemIndex},
+        HP.tabIndex 0
         ] 
         [
           SE.svg [SA.height 1.0, SA.width 1.0, SA.viewBox 0.0 0.0 tileX tileY] $ 

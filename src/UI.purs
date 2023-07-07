@@ -54,6 +54,16 @@ import Data.EuclideanRing
 import Types
 import Data.Lens
 import Data.Lens.Index
+import Web.UIEvent.KeyboardEvent
+import Web.HTML (window) as Web
+import Web.HTML.HTMLDocument as HTMLDocument
+import Web.HTML.Window (document) as Web
+import Web.UIEvent.KeyboardEvent (KeyboardEvent)
+import Web.UIEvent.KeyboardEvent as KE
+import Web.UIEvent.KeyboardEvent.EventTypes as KET
+import Halogen.Query.Event (eventListener)
+import Web.Event.Event as E
+
 -- * Main app
 
 component =
@@ -71,13 +81,12 @@ initialState _ = {initUniv: univ2, stepItem: 0, selItem: Just {itemType: EntryPo
 render :: forall w. UI -> HH.HTML w Action
 render state =
     HH.div []
-      [ HH.div [HP.class_ (ClassName "config")] --, HE.onClick \_ -> Test] 
-          [ 
-          drawBlock Nothing state.selItem {univ: state.initUniv, walkers: []}
-          ],
+      [ HH.div [HP.class_ (ClassName "config")] 
+               [drawBlock Nothing state.selItem {univ: state.initUniv, walkers: []}],
         HH.div [HP.class_ (ClassName "solutions")] 
-          (map (drawBlock (Just state.stepItem) Nothing) (getValidSTBlocks state.initUniv))
+               (map (drawBlock (Just state.stepItem) Nothing) (getValidSTBlocks state.initUniv))
       ]
+
 
            
 drawBlock :: forall w. Maybe Time -> Maybe SelItem -> STBlock -> HH.HTML w Action
@@ -135,21 +144,28 @@ selectTopTile mt ai = mapMaybe (minimumBy (prio mt)) $ groupBy ((==) `on` _.pos)
   prio mt = comparing ((_.time >>> Just >>> ((==) mt)) &&& _.itemType) 
 
 
-
 -- * Events
-
 handleAction :: forall output m. MonadAff m => Action -> H.HalogenM UI Action () output m Unit
 handleAction a = case a of
   Initialize -> do
     _ <- H.subscribe =<< timer Tick
+    --document <- H.liftEffect $ Web.document =<< Web.window
+    --H.subscribe' \sid ->
+    --  eventListener
+    --    KET.keyup
+    --    (HTMLDocument.toEventTarget document)
+    --    getAction 
     pure unit
-  Rotate se -> do
-     H.liftEffect $ logShow "test"
-     H.modify_ $ updateUI se rotate
-  ChangeTime se isPlus -> H.modify_ $ updateUI se $ changeTime isPlus
-  Select se -> H.modify_ \state -> state {selItem = Just se}
+  Select se ->            H.modify_ \state -> state {selItem = se}
+  Rotate se ->            H.modify_ $ updateUI' se rotate
+  ChangeTime se isPlus -> H.modify_ $ updateUI' se $ changeTime isPlus
+  Move se d ->            H.modify_ $ updateUI' se $ movePos d
   Tick -> H.modify_ \state -> state {stepItem = (state.stepItem + 1) `mod` 10}
   Noop -> pure unit
+  StopPropagation e cont -> do
+     liftEffect $ E.preventDefault e
+     liftEffect $ E.stopPropagation e
+     handleAction cont
 
 
 timer :: forall m a. MonadAff m => a -> m (HS.Emitter a)
@@ -164,10 +180,10 @@ timer val = do
 --solution u ui = set #initUniv u ui
 
 movePos :: Dir -> PTD -> PTD
-movePos N ptd = ptd {pos {y = ptd.pos.y +1}}  
-movePos S ptd = ptd {pos {y = ptd.pos.y -1}}  
-movePos E ptd = ptd {pos {y = ptd.pos.x +1}}  
-movePos W ptd = ptd {pos {y = ptd.pos.x -1}}  
+movePos N ptd = ptd {pos {y = ptd.pos.y -1}}  
+movePos S ptd = ptd {pos {y = ptd.pos.y +1}}  
+movePos E ptd = ptd {pos {x = ptd.pos.x +1}}  
+movePos W ptd = ptd {pos {x = ptd.pos.x -1}}  
 
 rotate :: PTD -> PTD
 rotate = turn' Right_
@@ -212,12 +228,17 @@ changeTime false  ptd = ptd {time = ptd.time - 1}
 --deleteAt i xs = ls ++ rs
 --  where (ls, _:rs) = splitAt i xs
 
-updateUI :: SelItem -> (PTD -> PTD) -> UI -> UI
-updateUI {itemType: EntryPortal, itemIndex: i} = over (_initUniv <<< _portals <<< ix (spy "i" i) <<< _entry) 
-updateUI {itemType: ExitPortal, itemIndex: i} = over (_initUniv <<< _portals <<< ix (spy "i" i) <<< _exit) 
-updateUI {itemType: Entry, itemIndex: i} = over (_initUniv <<< _emitters <<< ix (spy "i" i)) 
-updateUI {itemType: Exit, itemIndex: i} = over (_initUniv <<< _consumers <<< ix (spy "i" i)) 
-updateUI _ = undefined
+updateUI :: (PTD -> PTD) -> UI -> UI
+updateUI f ui = case ui.selItem of
+  Just sel -> updateUI' sel f ui
+  Nothing -> ui 
+
+updateUI' :: SelItem -> (PTD -> PTD) -> UI -> UI
+updateUI' {itemType: EntryPortal, itemIndex: i} = over (_initUniv <<< _portals <<< ix (spy "i" i) <<< _entry) 
+updateUI' {itemType: ExitPortal, itemIndex: i} = over (_initUniv <<< _portals <<< ix (spy "i" i) <<< _exit) 
+updateUI' {itemType: Entry, itemIndex: i} = over (_initUniv <<< _consumers <<< ix (spy "i" i)) 
+updateUI' {itemType: Exit, itemIndex: i} = over (_initUniv <<< _emitters <<< ix (spy "i" i)) 
+updateUI' _ = undefined
 
 --increaseStep :: UI -> UI
 --increaseStep (UI ps s st c)  = UI ps s (st+1) c
