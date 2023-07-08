@@ -15,3 +15,14 @@
   filter: invert(7%) sepia(99%) saturate(7493%) hue-rotate(248deg) brightness(116%) contrast(142%);
 }
 
+.tile {
+  font-size: 10pt;
+}
+
+.tile .sel {
+  display: none;
+}
+
+.tile:focus .sel{
+  display: block;
+}

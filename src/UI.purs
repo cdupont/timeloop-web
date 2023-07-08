@@ -76,7 +76,7 @@ component =
     }
 
 initialState :: forall i. i -> UI
-initialState _ = {initUniv: univ2, stepItem: 0, selItem: Just {itemType: EntryPortal, itemIndex: 0}, config: {showSols: false, showWrongTrajs: false}}
+initialState _ = {initUniv: univ2, stepItem: 0, selItem: Nothing, config: {showSols: false, showWrongTrajs: false}}
 
 render :: forall w. UI -> HH.HTML w Action
 render state =
@@ -149,19 +149,13 @@ handleAction :: forall output m. MonadAff m => Action -> H.HalogenM UI Action ()
 handleAction a = case a of
   Initialize -> do
     _ <- H.subscribe =<< timer Tick
-    --document <- H.liftEffect $ Web.document =<< Web.window
-    --H.subscribe' \sid ->
-    --  eventListener
-    --    KET.keyup
-    --    (HTMLDocument.toEventTarget document)
-    --    getAction 
     pure unit
   Select se ->            H.modify_ \state -> state {selItem = se}
   Rotate se ->            H.modify_ $ updateUI' se rotate
   ChangeTime se isPlus -> H.modify_ $ updateUI' se $ changeTime isPlus
   Move se d ->            H.modify_ $ updateUI' se $ movePos d
-  Tick -> H.modify_ \state -> state {stepItem = (state.stepItem + 1) `mod` 10}
-  Noop -> pure unit
+  Tick ->                 H.modify_ \state -> state {stepItem = (state.stepItem + 1) `mod` 10}
+  Noop ->                 pure unit
   StopPropagation e cont -> do
      liftEffect $ E.preventDefault e
      liftEffect $ E.stopPropagation e

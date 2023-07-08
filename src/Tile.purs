@@ -28,7 +28,7 @@ import Data.Monoid
 import Types
 import Data.Int
 import Debug
-import Web.UIEvent.MouseEvent
+import Web.UIEvent.MouseEvent as ME
 import Web.UIEvent.WheelEvent
 import Web.UIEvent.KeyboardEvent as KBE
 
@@ -70,6 +70,8 @@ keyDown ke se = case (KBE.key ke) of
   "ArrowRight" -> Move se E
   "ArrowLeft"  -> Move se W
   "r"          -> Rotate se
+  "+"          -> ChangeTime se true
+  "-"          -> ChangeTime se false
   _            -> Noop
 
 -- Get the tile with position, events and highlight
@@ -77,7 +79,7 @@ getTile :: forall w. Item -> HTML w Action
 getTile {itemType, itemIndex, pos, dirs, time, high, col, sel} = 
   SE.g [SA.class_ $ ClassName "tile",
         SA.transform [SAT.Translate (toNumber pos.x) (toNumber pos.y)],
-        HE.onClick \e -> Select $ Just {itemType, itemIndex},
+        HE.onClick \e -> StopPropagation (ME.toEvent e) $ Select $ Just {itemType, itemIndex},
         HE.onKeyDown \e -> StopPropagation (KBE.toEvent e) $ keyDown e {itemType, itemIndex},
         HP.tabIndex 0
         ] 
@@ -85,7 +87,7 @@ getTile {itemType, itemIndex, pos, dirs, time, high, col, sel} =
           SE.svg [SA.height 1.0, SA.width 1.0, SA.viewBox 0.0 0.0 tileX tileY] $ 
                   (guard high [getAssetImage timeAsset]) <>
                   [getTile' itemType time col dirs] <>
-                  (guard sel [getAssetImage selAsset])
+                  [SE.g [SA.class_ (ClassName "sel")] [getAssetImage selAsset]]
         ]
          
 
@@ -107,5 +109,5 @@ getAssetImage :: forall w i. String -> HTML w i
 getAssetImage s = SE.image [SA.x 0.0, SA.y 0.0, SA.width tileX, SA.height tileY, SA.href s]
 
 getTime :: forall w i. Time -> HTML w i
-getTime time = SE.text [SA.x 24.0, SA.y 12.0] [HH.text (show time)]
+getTime time = SE.text [SA.x 23.0, SA.y 15.0] [HH.text (show time)]
 
