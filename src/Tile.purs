@@ -76,13 +76,13 @@ keyDown ke se = case (KBE.key ke) of
 
 -- Get the tile with position, events and highlight
 getTile :: forall w. Item -> HTML w Action 
-getTile {itemType, itemIndex, pos, dirs, time, high, col, sel} = 
-  SE.g [SA.class_ $ ClassName "tile",
+getTile {itemType, itemIndex, pos, dirs, time, high, col, sel, top} = 
+  SE.g [SA.class_ $ ClassName $ "tile" <> (guard top " top"),
         SA.transform [SAT.Translate (toNumber pos.x) (toNumber pos.y)],
         HE.onClick \e -> StopPropagation (ME.toEvent e) $ Select $ Just {itemType, itemIndex},
         HE.onKeyDown \e -> StopPropagation (KBE.toEvent e) $ keyDown e {itemType, itemIndex},
         HP.tabIndex 0
-        ] 
+        ]
         [
           SE.svg [SA.height 1.0, SA.width 1.0, SA.viewBox 0.0 0.0 tileX tileY] $ 
                   (guard high [getAssetImage timeAsset]) <>

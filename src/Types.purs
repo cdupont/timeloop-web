@@ -27,15 +27,20 @@ instance i ∷ Show ItemType where
 
 data Color = Black | Red | Blue
 
+derive instance Generic Color _
+instance j ∷ Show Color where
+   show = genericShow 
+
 type Item = {
   itemType :: ItemType,
   itemIndex :: Int,
   pos :: Pos,
   dirs :: ANE.NonEmptyArray Dir,
   time :: Time,
-  high :: Boolean,
-  sel  :: Boolean,
-  col :: Color}
+  high :: Boolean,  -- Highlighted when time is matching
+  sel  :: Boolean,  -- Selected tile
+  col  :: Color,    -- color of the tile
+  top  :: Boolean}  -- tile is on top
 
 type ItemMap = Array Item
 

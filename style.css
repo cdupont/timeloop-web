@@ -17,6 +17,11 @@
 
 .tile {
   font-size: 10pt;
+  display: none;
+}
+
+.tile.top {
+  display: block;
 }
 
 .tile .sel {

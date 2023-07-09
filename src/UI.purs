@@ -36,7 +36,7 @@ import Effect.Console (logShow)
 import Effect.Class (class MonadEffect)
 import Undefined
 import Data.Array.Partial as AP
-import Data.Foldable
+import Data.Foldable as F
 import Data.Function
 import Data.Array.NonEmpty as AN
 import Data.Profunctor.Strong
@@ -134,14 +134,22 @@ getItem' it mt c sel ptds i = {itemType:  it,
                                time:      first.time, 
                                high:      Just first.time == mt,
                                col:       c,
-                               sel:       sel == Just {itemType: it, itemIndex: i}} where
+                               sel:       sel == Just {itemType: it, itemIndex: i},
+                               top:       true} where
   first = ANE.head ptds
 
---Removes overlapped tiles, by selecting the top one
---ItemType is selected by Ord priority, furthermore items which matches the current time gets priority
+
 selectTopTile ::  Maybe Time -> Array Item -> Array Item
-selectTopTile mt ai = mapMaybe (minimumBy (prio mt)) $ groupBy ((==) `on` _.pos) $ sortBy (comparing _.pos) $ ai where
-  prio mt = comparing ((_.time >>> Just >>> ((==) mt)) &&& _.itemType) 
+selectTopTile mt is = map (\i -> i {top = isTop i}) is where
+  isTop :: Item -> Boolean
+  isTop i = F.and $ spy (show i) $ map (isTop' i) is
+  isTop' :: Item -> Item -> Boolean
+  isTop' i1 i2 = if (i1.pos == i2.pos)
+                 then if (Just i1.time == mt) == (Just i2.time == mt)
+                      then i1.itemType <= i2.itemType
+                      else (Just i1.time == mt) >= (Just i2.time == mt)
+                 else true
+
 
 
 -- * Events
