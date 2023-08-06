@@ -30,7 +30,7 @@ import Halogen.Svg.Attributes as SA
 import Halogen.Svg.Elements as SE
 import Halogen.Svg.Attributes.Transform as SAT
 import Halogen.HTML.Events as HE
-import Record
+import Record hiding (set)
 import Debug
 import Web.HTML.Common
 import Effect.Console (logShow)
@@ -79,7 +79,7 @@ component =
     }
 
 initialState :: forall i. i -> UI
-initialState _ = {initUniv: univ2, stepItem: 0, selItem: Nothing, config: {showSols: false, showWrongTrajs: false}, delayPortal: Nothing}
+initialState _ = {initUniv: univ2, stepItem: 0, selItem: Nothing, config: {showSols: false, showWrongTrajs: false}, partialPortal: Nothing}
 
 render :: forall w. UI -> HH.HTML w Action
 render state =
@@ -95,8 +95,9 @@ render state =
 drawBlock :: forall w. Maybe Time -> Maybe SelItem -> STBlock -> HH.HTML w Action
 drawBlock mt sel block = HH.div [] $ singleton $ 
   SE.svg [SA.height 360.0, SA.width 360.0, SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y)
-          --, HE.onMouseDown \e -> DelayPortalStart {x: floor $ (toNumber $ CSSME.offsetX e) / tileX, y: floor $ (toNumber $ CSSME.offsetY e) / tileY}
-          --, HE.onMouseUp   \e -> DelayPortalEnd   {x: floor $ (toNumber $ CSSME.offsetX e) / tileX, y: floor $ (toNumber $ CSSME.offsetY e) / tileY}
+          , HE.onMouseDown \e -> PortalStart {x: floor $ (toNumber $ CSSME.offsetX e) / tileX, y: floor $ (toNumber $ CSSME.offsetY e) / tileY}
+          , HE.onMouseMove \e -> PortalMove {x: floor $ (toNumber $ CSSME.offsetX e) / tileX, y: floor $ (toNumber $ CSSME.offsetY e) / tileY}
+          , HE.onMouseUp   \e -> PortalEnd
           ]
          [
            SE.image [SA.x 0.0, SA.y 0.0, SA.width 9.0, SA.height 9.0, SA.href "assets/univ_background.svg"],
@@ -174,8 +175,9 @@ handleAction a = case a of
      liftEffect $ E.preventDefault e
      liftEffect $ E.stopPropagation e
      handleAction cont
---  DelayPortalStart pos -> H.modify_ \state -> state {delayPortal = Just {pos1: pos, pos2: Nothing, delay: 5}}
---  DelayPortalEnd   pos -> H.modify_ \state -> state {delayPortal = Just {pos1: state.delayPortal.pos1, pos2: Just pos, delay: 5}}
+  PortalStart pos -> H.modify_ \ui -> ui {partialPortal = Just {entry: pos, exit: {pos: pos, time: 5, dir: N}}}
+  PortalMove  pos -> H.modify_ \ui -> set (_partialPortal <<< _Just <<< _exit <<< _pos) pos ui 
+  PortalEnd       -> H.modify_ \ui -> over (_initUniv <<< _portals) (\ps -> (ps <> (fromFoldable ui.partialPortal))) ui
 
 
 timer :: forall m a. MonadAff m => a -> m (HS.Emitter a)

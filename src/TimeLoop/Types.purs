@@ -48,6 +48,9 @@ type PTD = {
   dir  :: Dir}
 --  deriving (Eq, Ord, Show, Generic)
 
+_pos :: forall a r. Lens' { pos :: a | r } a
+_pos = prop (Proxy :: Proxy "pos")
+
 -- An Walker is a particle with a position, a time and a direction.
 type Walker = PTD
 --  deriving (Eq, Ord, Show, Generic)

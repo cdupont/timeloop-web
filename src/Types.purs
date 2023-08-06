@@ -48,16 +48,14 @@ type UI = {
   initUniv :: Univ,
   stepItem :: Time,          -- A time step counter
   selItem  :: Maybe SelItem, 
-  delayPortal :: Maybe DelayPortal,
+  partialPortal :: Maybe Portal,
   config   :: Config}   
 
 _initUniv :: forall a r. Lens' { initUniv :: a | r } a
 _initUniv = prop (Proxy :: Proxy "initUniv")
+_partialPortal :: forall a r. Lens' { partialPortal :: a | r } a
+_partialPortal = prop (Proxy :: Proxy "partialPortal")
 
-type DelayPortal = {
-  pos1 :: Pos,
-  pos2 :: Maybe Pos,
-  delay :: Int}
 
 type Config = {
   showSols :: Boolean,
@@ -75,6 +73,7 @@ data Action = Initialize
             | StopPropagation Event Action
             | Tick
             | Noop
-            -- | DelayPortalStart Pos
-            -- | DelayPortalEnd Pos
+            | PortalStart Pos
+            | PortalMove Pos
+            | PortalEnd
 

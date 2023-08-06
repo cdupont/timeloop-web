@@ -28,6 +28,7 @@
   , "tailrec"
   , "tuples"
   , "undefined"
+  , "web-cssom"
   , "web-events"
   , "web-html"
   , "web-uievents"
