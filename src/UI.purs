@@ -29,6 +29,7 @@ import Graphics.Canvas (rect, fillPath, setFillStyle, getContext2D,
 import Halogen.Svg.Attributes as SA
 import Halogen.Svg.Elements as SE
 import Halogen.Svg.Attributes.Transform as SAT
+import Halogen.HTML.Events as HE
 import Record
 import Debug
 import Web.HTML.Common
@@ -63,6 +64,8 @@ import Web.UIEvent.KeyboardEvent as KE
 import Web.UIEvent.KeyboardEvent.EventTypes as KET
 import Halogen.Query.Event (eventListener)
 import Web.Event.Event as E
+import Web.UIEvent.MouseEvent as ME
+import Web.CSSOM.MouseEvent as CSSME
 
 -- * Main app
 
@@ -76,7 +79,7 @@ component =
     }
 
 initialState :: forall i. i -> UI
-initialState _ = {initUniv: univ2, stepItem: 0, selItem: Nothing, config: {showSols: false, showWrongTrajs: false}}
+initialState _ = {initUniv: univ2, stepItem: 0, selItem: Nothing, config: {showSols: false, showWrongTrajs: false}, delayPortal: Nothing}
 
 render :: forall w. UI -> HH.HTML w Action
 render state =
@@ -91,7 +94,10 @@ render state =
            
 drawBlock :: forall w. Maybe Time -> Maybe SelItem -> STBlock -> HH.HTML w Action
 drawBlock mt sel block = HH.div [] $ singleton $ 
-  SE.svg [SA.height 360.0, SA.width 360.0, SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y)]
+  SE.svg [SA.height 360.0, SA.width 360.0, SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y)
+          --, HE.onMouseDown \e -> DelayPortalStart {x: floor $ (toNumber $ CSSME.offsetX e) / tileX, y: floor $ (toNumber $ CSSME.offsetY e) / tileY}
+          --, HE.onMouseUp   \e -> DelayPortalEnd   {x: floor $ (toNumber $ CSSME.offsetX e) / tileX, y: floor $ (toNumber $ CSSME.offsetY e) / tileY}
+          ]
          [
            SE.image [SA.x 0.0, SA.y 0.0, SA.width 9.0, SA.height 9.0, SA.href "assets/univ_background.svg"],
            drawItemMap (getItemMap block mt sel) lims
@@ -111,12 +117,12 @@ getItemMap stb mt sel = selectTopTile mt $ getItemMap' stb mt sel
 
 -- Get the various items in Univ 
 getItemMap' :: STBlock -> Maybe Time -> Maybe SelItem -> Array Item 
-getItemMap' {univ: {portals, emitters, consumers}, walkers: walkers} mt sel = ems <> cos <> ps <> ws where
+getItemMap' {univ : {portals, emitters, consumers}, walkers : walkers} mt sel = ems <> ps <> ws where
   -- convert STBlock elements into items
   ems = zipWith (getItem Exit mt Black sel) emitters (0..10)
-  cos = zipWith (getItem Entry mt Black sel) consumers (0..10)
+  -- cos = zipWith (getItem Entry mt Black sel) consumers (0..10)
   ps = concat $ zipWith (\{exit, entry} i -> [getItem ExitPortal  mt (toColor $ i+1) sel exit  i, 
-                                              getItem EntryPortal mt (toColor $ i+1) sel entry i]) portals (0..10)
+                                              {itemType : EntryPortal, itemIndex : i, pos : entry, dirs : [], time : Nothing, high : false, col : (toColor $ i+1), sel : false, top : true}]) portals (0..10)
   ws = map col $ groupBy ((==) `on` (_.pos &&& _.time)) $ sortBy (comparing (_.pos &&& _.time)) $ walkers 
   -- Create collisions for walkers at the same pos and time
   col as = if ANE.length as == 1 
@@ -130,8 +136,8 @@ getItem' :: ItemType -> Maybe Time -> Color -> Maybe SelItem -> ANE.NonEmptyArra
 getItem' it mt c sel ptds i = {itemType:  it, 
                                itemIndex: i, 
                                pos:       first.pos,
-                               dirs:      map _.dir ptds, 
-                               time:      first.time, 
+                               dirs:      ANE.toArray $ map _.dir ptds, 
+                               time:      Just first.time, 
                                high:      Just first.time == mt,
                                col:       c,
                                sel:       sel == Just {itemType: it, itemIndex: i},
@@ -142,12 +148,12 @@ getItem' it mt c sel ptds i = {itemType:  it,
 selectTopTile ::  Maybe Time -> Array Item -> Array Item
 selectTopTile mt is = map (\i -> i {top = isTop i}) is where
   isTop :: Item -> Boolean
-  isTop i = F.and $ spy (show i) $ map (isTop' i) is
+  isTop i = F.and $ map (isTop' i) is
   isTop' :: Item -> Item -> Boolean
   isTop' i1 i2 = if (i1.pos == i2.pos)
-                 then if (Just i1.time == mt) == (Just i2.time == mt)
+                 then if (i1.time == mt) == (i2.time == mt)
                       then i1.itemType <= i2.itemType
-                      else (Just i1.time == mt) >= (Just i2.time == mt)
+                      else (i1.time == mt) >= (i2.time == mt)
                  else true
 
 
@@ -168,6 +174,8 @@ handleAction a = case a of
      liftEffect $ E.preventDefault e
      liftEffect $ E.stopPropagation e
      handleAction cont
+--  DelayPortalStart pos -> H.modify_ \state -> state {delayPortal = Just {pos1: pos, pos2: Nothing, delay: 5}}
+--  DelayPortalEnd   pos -> H.modify_ \state -> state {delayPortal = Just {pos1: state.delayPortal.pos1, pos2: Just pos, delay: 5}}
 
 
 timer :: forall m a. MonadAff m => a -> m (HS.Emitter a)
@@ -236,11 +244,14 @@ updateUI f ui = case ui.selItem of
   Nothing -> ui 
 
 updateUI' :: SelItem -> (PTD -> PTD) -> UI -> UI
-updateUI' {itemType: EntryPortal, itemIndex: i} = over (_initUniv <<< _portals <<< ix (spy "i" i) <<< _entry) 
-updateUI' {itemType: ExitPortal, itemIndex: i} = over (_initUniv <<< _portals <<< ix (spy "i" i) <<< _exit) 
-updateUI' {itemType: Entry, itemIndex: i} = over (_initUniv <<< _consumers <<< ix (spy "i" i)) 
-updateUI' {itemType: Exit, itemIndex: i} = over (_initUniv <<< _emitters <<< ix (spy "i" i)) 
-updateUI' _ = undefined
+updateUI' {itemType: EntryPortal, itemIndex: i} f = over (_initUniv <<< _portals <<< ix (spy "i" i) <<< _entry) (toPos f)
+updateUI' {itemType: ExitPortal, itemIndex: i} f  = over (_initUniv <<< _portals <<< ix (spy "i" i) <<< _exit) f
+updateUI' {itemType: Entry, itemIndex: i} f       = over (_initUniv <<< _consumers <<< ix (spy "i" i)) (toPos f) 
+updateUI' {itemType: Exit, itemIndex: i} f        = over (_initUniv <<< _emitters <<< ix (spy "i" i)) f 
+updateUI' _ _ = undefined
+
+toPos :: (PTD -> PTD) -> Pos -> Pos 
+toPos f p = _.pos $ f ({pos: p, time: 0, dir: N})
 
 --increaseStep :: UI -> UI
 --increaseStep (UI ps s st c)  = UI ps s (st+1) c

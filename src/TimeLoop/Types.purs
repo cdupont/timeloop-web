@@ -55,7 +55,7 @@ type Walker = PTD
 type Source = PTD
 --  deriving (Eq, Ord, Show, Generic)
 
-type Sink = PTD
+type Sink = Pos
 --  deriving (Eq, Ord, Show, Generic)
 
 -- A portal links two points in space, at specific times and directions.
@@ -124,14 +124,14 @@ initSource = { pos: {x:0, y:0}, time:0, dir:E}
 --
 --No solution (self deviating)
 univ1 :: Univ
-univ1 = {portals : [{entry : {pos : {x : 6, y : 0}, time : 6, dir : E}, 
+univ1 = {portals : [{entry : {x : 6, y : 0}, 
                      exit : {pos : {x : 3, y : 3}, time : 0, dir : S}}], 
          emitters : [{pos : {x : 0, y : 0}, time : 0, dir : E}], 
          consumers : []}
 
 -- two solutions: going straight or going through portal
 univ2 :: Univ
-univ2 = {portals : [{entry : {pos : {x : 4, y : 0}, time : 6, dir : N},
+univ2 = {portals : [{entry : {x : 4, y : 0},
                      exit : {pos : {x : 7, y : 3}, time : 0, dir : W}}],
          emitters : [{pos : {x : 1, y : 3}, time : 0, dir : E}],
          consumers : []}

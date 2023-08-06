@@ -1,5 +1,6 @@
 module TimeLoop.Search where
 
+import Prelude
 import TimeLoop.Types
 import TimeLoop.Walker
 import Data.Boolean
@@ -36,7 +37,7 @@ getPortalCombinations ps = subsequences $ map _.exit ps
 getTimeline :: Array Source -> Array Sink -> Array {sources :: Array Source, sinks :: Array Sink}
 getTimeline emitters consumers = map getIOT (0..maxStep) where
   getIOT t = {sources : filter (\source -> t == source.time) emitters, 
-              sinks : filter (\sink -> t == sink.time) consumers}
+              sinks : consumers}
 
 -- generate the full universe of walkers from a timeline. Arrays are indexed by Time.
 getAllWalkers :: Array {sources :: Array Source, sinks :: Array Sink} -> Array (Array Walker)
@@ -49,7 +50,7 @@ getNextStep ws {sources, sinks} =
   -- We move all walkers on step. New walkers appears on the sources. Walkers that are on a Sink are removed.
   -- This will be used by mapAccumL as input for the next step 
   --{ accum : (ws <> emitted) \\ consummed,  
-  { accum : concatMap move $ posGroups $ (ws <> emitted) \\ consummed,  
+  { accum : concatMap move $ posGroups $ consum (ws <> emitted),  
 --  -- We store the current walkers, together with the new walkers appearing at the sources.
 --  -- This will be stored by mapAccumL in the final array
     value : ws <> emitted}
@@ -57,13 +58,13 @@ getNextStep ws {sources, sinks} =
   -- group the walkers that are on the same position
   posGroups :: Array Walker -> Array (Array Walker)
   posGroups as = map toArray $ groupBy ((==) `on` _.pos) $ sortWith (_.pos) as 
-  consummed = sinks
+  consum  = filter (\{pos} -> not $ pos `elem` sinks)
   emitted = sources
 
 -- A Universe is valid when a walker that enters a portal, also exits it. 
 isValidBlock :: STBlock -> Boolean
 isValidBlock {univ : {portals : ps}, walkers : ws} = all isValidPortal ps where
-  isValidPortal {entry : sk, exit : sc} = (sc `elem` ws) == (sk `elem` ws)
+  isValidPortal {entry : sk, exit : sc} = (sc `elem` ws) == (sk `elem` (map _.pos ws))
 
 
 -- | The 'subsequences' function returns the list of all subsequences of the argument.

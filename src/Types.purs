@@ -35,8 +35,8 @@ type Item = {
   itemType :: ItemType,
   itemIndex :: Int,
   pos :: Pos,
-  dirs :: ANE.NonEmptyArray Dir,
-  time :: Time,
+  dirs :: Array Dir,
+  time :: Maybe Time,
   high :: Boolean,  -- Highlighted when time is matching
   sel  :: Boolean,  -- Selected tile
   col  :: Color,    -- color of the tile
@@ -48,10 +48,16 @@ type UI = {
   initUniv :: Univ,
   stepItem :: Time,          -- A time step counter
   selItem  :: Maybe SelItem, 
+  delayPortal :: Maybe DelayPortal,
   config   :: Config}   
 
 _initUniv :: forall a r. Lens' { initUniv :: a | r } a
 _initUniv = prop (Proxy :: Proxy "initUniv")
+
+type DelayPortal = {
+  pos1 :: Pos,
+  pos2 :: Maybe Pos,
+  delay :: Int}
 
 type Config = {
   showSols :: Boolean,
@@ -69,4 +75,6 @@ data Action = Initialize
             | StopPropagation Event Action
             | Tick
             | Noop
+            -- | DelayPortalStart Pos
+            -- | DelayPortalEnd Pos
 

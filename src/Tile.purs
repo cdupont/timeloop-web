@@ -21,6 +21,7 @@ import CSS.Color hiding (Color)
 import CSS.Font
 import Data.Show.Generic
 import Data.Generic.Rep
+import Data.Array
 import Data.Array.NonEmpty as ANE
 import Data.Enum
 import Data.Maybe
@@ -92,18 +93,20 @@ getTile {itemType, itemIndex, pos, dirs, time, high, col, sel, top} =
          
 
 -- Get the tile including collisions
-getTile' :: forall w i. ItemType -> Time -> Color -> ANE.NonEmptyArray Dir -> HTML w i
-getTile' Collision  t col ds = SE.g [] $ ANE.toArray $ map (getTile'' (asset Collision) col t) ds
-getTile' it t col ds         = getTile'' (asset it) col t (ANE.head ds)
+getTile' :: forall w i. ItemType -> Maybe Time -> Color -> Array Dir -> HTML w i
+getTile' Collision   t col ds  = SE.g [] $ map (\d -> getTile'' (asset Collision) col t (Just d)) ds
+getTile' EntryPortal t col []  = getTile'' (asset EntryPortal) col t Nothing 
+getTile' it          t col [d] = getTile'' (asset it) col t (Just d)
+getTile' _           _ _   _   = SE.g [] []
 
 -- Get the tile with its color, time index and orientation
-getTile'' :: forall w i. String -> Color -> Time -> Dir -> HTML w i
+getTile'' :: forall w i. String -> Color -> Maybe Time -> Maybe Dir -> HTML w i
 getTile'' asset col time dir = SE.g [SA.class_ $ getColorClass col] 
-                                    [
-                                      SE.g [SA.transform [SAT.Rotate (rotateDir dir) (tileX / 2.0) (tileY / 2.0)]]
-                                           [getAssetImage asset],
-                                      getTime time
-                                    ]
+                                    ([
+                                      SE.g [SA.transform [SAT.Rotate (rotateDir (fromMaybe N dir)) (tileX / 2.0) (tileY / 2.0)]]
+                                           [getAssetImage asset]
+                                    ] <> (getTime <$> fromFoldable time))
+                                    
 
 getAssetImage :: forall w i. String -> HTML w i
 getAssetImage s = SE.image [SA.x 0.0, SA.y 0.0, SA.width tileX, SA.height tileY, SA.href s]
