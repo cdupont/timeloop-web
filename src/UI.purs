@@ -82,12 +82,12 @@ initialState :: forall i. i -> UI
 initialState _ = {initUniv: univ2, stepItem: 0, selItem: Nothing, config: {showSols: false, showWrongTrajs: false}, partialPortal: Nothing}
 
 render :: forall w. UI -> HH.HTML w Action
-render state =
+render ui =
     HH.div []
       [ HH.div [HP.class_ (ClassName "config")] 
-               [drawBlock Nothing state.selItem {univ: state.initUniv, walkers: []}],
+      [drawBlock Nothing ui.selItem {univ: ui.initUniv { portals = ui.initUniv.portals <> (fromFoldable $ join $ getPartialPortal <$> ui.partialPortal)}, walkers: []}],
         HH.div [HP.class_ (ClassName "solutions")] 
-               (map (drawBlock (Just state.stepItem) Nothing) (getValidSTBlocks state.initUniv))
+               (map (drawBlock (Just ui.stepItem) Nothing) (getValidSTBlocks (ui.initUniv { portals = ui.initUniv.portals <> (fromFoldable $ join $ getPartialPortal <$> ui.partialPortal)} )))
       ]
 
 
@@ -95,14 +95,18 @@ render state =
 drawBlock :: forall w. Maybe Time -> Maybe SelItem -> STBlock -> HH.HTML w Action
 drawBlock mt sel block = HH.div [] $ singleton $ 
   SE.svg [SA.height 360.0, SA.width 360.0, SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y)
-          , HE.onMouseDown \e -> PortalStart {x: floor $ (toNumber $ CSSME.offsetX e) / tileX, y: floor $ (toNumber $ CSSME.offsetY e) / tileY}
-          , HE.onMouseMove \e -> PortalMove {x: floor $ (toNumber $ CSSME.offsetX e) / tileX, y: floor $ (toNumber $ CSSME.offsetY e) / tileY}
-          , HE.onMouseUp   \e -> PortalEnd
+          , HE.onMouseDown $ PortalStart <<< getPos
+          , HE.onMouseMove $ PortalMove <<< getPos
+          , HE.onMouseUp   $ PortalEnd <<< getPos
           ]
          [
            SE.image [SA.x 0.0, SA.y 0.0, SA.width 9.0, SA.height 9.0, SA.href "assets/univ_background.svg"],
            drawItemMap (getItemMap block mt sel) lims
          ]
+
+
+getPos :: ME.MouseEvent -> Pos
+getPos e = {x: floor $ (toNumber $ CSSME.offsetX e) / tileX, y: floor $ (toNumber $ CSSME.offsetY e) / tileY}
 
 
 -- Draws items
@@ -175,10 +179,23 @@ handleAction a = case a of
      liftEffect $ E.preventDefault e
      liftEffect $ E.stopPropagation e
      handleAction cont
-  PortalStart pos -> H.modify_ \ui -> ui {partialPortal = Just {entry: pos, exit: {pos: pos, time: 5, dir: N}}}
-  PortalMove  pos -> H.modify_ \ui -> set (_partialPortal <<< _Just <<< _exit <<< _pos) pos ui 
-  PortalEnd       -> H.modify_ \ui -> over (_initUniv <<< _portals) (\ps -> (ps <> (fromFoldable ui.partialPortal))) ui
+  PortalStart pos -> H.modify_ $ portalStart pos 
+  PortalMove  pos -> H.modify_ $ portalMove pos 
+  PortalEnd   pos -> H.modify_ $ portalEnd pos 
 
+portalStart :: Pos -> UI -> UI
+portalStart pos ui@{partialPortal : Nothing} = ui {partialPortal = Just {entry : pos, exit : Nothing}}
+portalStart _ ui = ui
+
+portalMove :: Pos -> UI -> UI
+portalMove pos ui@{partialPortal : Just {entry : entry, exit : Nothing}}                                = ui {partialPortal = Just {entry : pos, exit : Nothing}}
+portalMove pos ui@{partialPortal : Just {entry : entry, exit : Just {pos : _, time : time, dir : dir}}} = ui {partialPortal = Just {entry : entry, exit : Just {pos : pos, time : time, dir : dir}}}
+portalMove _ ui = ui
+
+portalEnd :: Pos -> UI -> UI
+portalEnd pos ui@{partialPortal : Just {entry : entry, exit : Nothing}}     = ui {partialPortal = Just {entry : entry, exit : Just {pos : pos, time : 5, dir : N}}}
+portalEnd pos ui@{partialPortal : Just {entry : entry, exit : Just exit}} = ui {partialPortal = Nothing, initUniv {portals = {entry : entry, exit : exit} : ui.initUniv.portals }}
+portalEnd _ ui = ui
 
 timer :: forall m a. MonadAff m => a -> m (HS.Emitter a)
 timer val = do
@@ -204,41 +221,6 @@ changeTime :: Boolean -> PTD -> PTD
 changeTime true  ptd  = ptd {time = ptd.time + 1}
 changeTime false  ptd = ptd {time = ptd.time - 1}
 
---changeItem :: UI -> UI
---changeItem ui@(UI u s _ _) = ui {selItem = nextSel (getSels u) s} 
--- 
---nextSel :: (Eq a) => [a] -> Maybe a -> Maybe a
---nextSel [] _ = Nothing
---nextSel as Nothing = Just $ head as
---nextSel as (Just a) = case dropWhile (/=a) as of
---  [] -> Nothing
---  [_] -> Just $ head as
---  _:b:_ -> Just b where 
---
---getSels :: Univ -> [SelItem]
---getSels (Univ ps es cs) = portals ++ entries ++ exits where
---  portals = concatMap (\i -> [SelItem EntryPortal i, SelItem ExitPortal i]) [0..length ps-1]
---  entries = map (SelItem Entry) [0..length es-1]
---  exits = map (SelItem Exit) [0..length cs-1]
---
---addPortal :: UI -> UI
---addPortal ui = changeItem $ over (#initUniv % #portals) (++ [portal1]) ui
---
---addEmmiter :: UI -> UI
---addEmmiter ui = changeItem $ over (#initUniv % #emitters) (++ [initSource]) ui
---
---delItem :: UI -> UI
---delItem = changeItem . delItem'
---
---delItem' :: UI -> UI
---delItem' ui@(UI _ (Just (SelItem EntryPortal i)) _ _) = over (#initUniv % #portals) (deleteAt i) ui 
---delItem' ui@(UI _ (Just (SelItem ExitPortal i)) _ _) =  over (#initUniv % #portals) (deleteAt i) ui 
---delItem' ui@(UI _ (Just (SelItem Entry i)) _ _) =  over (#initUniv % #emitters) (deleteAt i) ui 
---delItem' ui@(UI _ (Just (SelItem Exit i)) _ _) =  over (#initUniv % #consumers) (deleteAt i) ui 
---delItem' ui = ui
---
---deleteAt i xs = ls ++ rs
---  where (ls, _:rs) = splitAt i xs
 
 updateUI :: (PTD -> PTD) -> UI -> UI
 updateUI f ui = case ui.selItem of
@@ -255,60 +237,9 @@ updateUI' _ _ = undefined
 toPos :: (PTD -> PTD) -> Pos -> Pos 
 toPos f p = _.pos $ f ({pos: p, time: 0, dir: N})
 
---increaseStep :: UI -> UI
---increaseStep (UI ps s st c)  = UI ps s (st+1) c
---
---showSolutions :: UI -> UI
---showSolutions = over (#config % #showSols) not 
---
---showWrongTrajectories :: UI -> UI
---showWrongTrajectories = over (#config % #showWrongTrajs) not 
---
----- * Attributes
---
---dimA, selA :: AttrName
---dimA   = attrName "Dim"
---selA   = attrName "Sel"
---portalA n = attrName $ "Portal" ++ show n
---borderGood = attrName "borderGood"
---borderBad = attrName "borderBad"
---
---portalColors :: [VA.Color]
---portalColors = [VA.yellow, VA.blue, VA.green]
---
---
---theMap :: UI -> AttrMap
---theMap (UI _ _ st _) = attrMap
---  V.defAttr $
---    [(dimA, VA.withStyle VA.defAttr VA.dim),
---     (borderGood, fg VA.green),
---     (borderBad, fg VA.red),
---     (selA, if even (st `div` 5) then VA.withStyle VA.defAttr VA.bold else VA.defAttr)] 
---   ++[ (portalA n, fg (portalColors !! n)) | n <- [0.. length portalColors - 1]] 
---
---
---help :: String
---help = "Keyboard arrows: move selected item\n" ++
---       "\'r\': rotate\n" ++
---       "\'+/-\': increase/decrease time\n" ++
---       "Space: change selected item\n" ++
---       "Enter: Show/Hide solutions\n" ++
---       "\'p\': add portal\n" ++
---       "\'e\': add emitter\n" ++
---       "\'d\': delete item\n" ++
---       "---------------------\n" ++
---       "Load examples:\n" ++
---       "\'1\': The Paradox\n" ++
---       "\'2\': Self-rightening solution\n" ++
---       "\'3\': The Djinn\n" ++
---       "\'4\': Djinn deviation\n" ++
---       "\'5\': The Northern Cross\n" ++
---       "\'6\': Kill one solution with Paradox\n" ++
---       "\'7\': 4 solutions\n"
---
---
---encouragement :: Bool -> Int -> String
---encouragement False _ = "Press Enter when you are ready."
---encouragement _ 0 = "No solutions! You've hit a paradox. Press \'w\' to see why."
---encouragement _ 1 = "There is only one possible trajectory."
---encouragement _ n = "There are " ++ show n ++ " possible trajectories."
+
+getPartialPortal :: PartialPortal -> Maybe Portal
+getPartialPortal {entry : _, exit : Nothing} = Nothing
+getPartialPortal {entry : entry, exit : Just exit} = Just {entry, exit}
+
+
