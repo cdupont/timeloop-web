@@ -85,11 +85,10 @@ render :: forall w. UI -> HH.HTML w Action
 render ui =
     HH.div []
       [ HH.div [HP.class_ (ClassName "config")] 
-      [drawBlock Nothing ui.selItem {univ: ui.initUniv { portals = ui.initUniv.portals <> (fromFoldable $ join $ getPartialPortal <$> ui.partialPortal)}, walkers: []}],
+      [drawBlock Nothing ui.selItem {univ: getUniv ui, walkers: []}],
         HH.div [HP.class_ (ClassName "solutions")] 
-               (map (drawBlock (Just ui.stepItem) Nothing) (getValidSTBlocks (ui.initUniv { portals = ui.initUniv.portals <> (fromFoldable $ join $ getPartialPortal <$> ui.partialPortal)} )))
+               (map (drawBlock (Just ui.stepItem) Nothing) (getValidSTBlocks $ getUniv ui))
       ]
-
 
            
 drawBlock :: forall w. Maybe Time -> Maybe SelItem -> STBlock -> HH.HTML w Action
@@ -104,6 +103,10 @@ drawBlock mt sel block = HH.div [] $ singleton $
            drawItemMap (getItemMap block mt sel) lims
          ]
 
+getUniv :: UI -> Univ
+getUniv {initUniv, partialPortal : Nothing}                        = initUniv
+getUniv {initUniv, partialPortal : Just {entry, exit : Nothing}}   = initUniv {consumers = entry : initUniv.consumers}
+getUniv {initUniv, partialPortal : Just {entry, exit : Just exit}} = initUniv {portals = {entry : entry, exit : exit} : initUniv.portals}
 
 getPos :: ME.MouseEvent -> Pos
 getPos e = {x: floor $ (toNumber $ CSSME.offsetX e) / tileX, y: floor $ (toNumber $ CSSME.offsetY e) / tileY}
@@ -122,10 +125,10 @@ getItemMap stb mt sel = selectTopTile mt $ getItemMap' stb mt sel
 
 -- Get the various items in Univ 
 getItemMap' :: STBlock -> Maybe Time -> Maybe SelItem -> Array Item 
-getItemMap' {univ : {portals, emitters, consumers}, walkers : walkers} mt sel = ems <> ps <> ws where
+getItemMap' {univ : {portals, emitters, consumers}, walkers : walkers} mt sel = ems <> cos <> ps <> ws where
   -- convert STBlock elements into items
   ems = zipWith (getItem Exit mt Black sel) emitters (0..10)
-  -- cos = zipWith (getItem Entry mt Black sel) consumers (0..10)
+  cos = zipWith (\pos i -> {itemType : EntryPortal, itemIndex : i, pos : pos, dirs : [], time : Nothing, high : false, col : (toColor $ i+1), sel : false, top : true}) consumers (0..10)
   ps = concat $ zipWith (\{exit, entry} i -> [getItem ExitPortal  mt (toColor $ i+1) sel exit  i, 
                                               {itemType : EntryPortal, itemIndex : i, pos : entry, dirs : [], time : Nothing, high : false, col : (toColor $ i+1), sel : false, top : true}]) portals (0..10)
   ws = map col $ groupBy ((==) `on` (_.pos &&& _.time)) $ sortBy (comparing (_.pos &&& _.time)) $ walkers 
