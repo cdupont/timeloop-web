@@ -48,6 +48,7 @@ type UI = {
   initUniv :: Univ,
   stepItem :: Time,          -- A time step counter
   selItem  :: Maybe SelItem, 
+  mode :: Mode,
   partialPortal :: Maybe PartialPortal,
   config   :: Config}   
 
@@ -68,15 +69,20 @@ type SelItem = {
   itemType  :: ItemType,
   itemIndex :: Int}
 
+data Mode = SelectMode | AddMode
+
 data Action = Initialize
+            | Mode Mode
             | Select (Maybe SelItem)
             | Rotate SelItem 
             | ChangeTime SelItem Boolean
             | Move SelItem Dir
+            | RotateP
+            | ChangeTimeP Boolean
             | StopPropagation Event Action
             | Tick
             | Noop
-            | PortalStart Pos
-            | PortalMove Pos
-            | PortalEnd Pos
+            | MouseDown Pos
+            | MouseMove Pos
+            | MouseUp Pos
 

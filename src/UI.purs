@@ -79,7 +79,7 @@ component =
     }
 
 initialState :: forall i. i -> UI
-initialState _ = {initUniv: univ2, stepItem: 0, selItem: Nothing, config: {showSols: false, showWrongTrajs: false}, partialPortal: Just {entry: {x: 0, y:0}, exit: Nothing}}
+initialState _ = {initUniv: univ2, stepItem: 0, selItem: Nothing, config: {showSols: false, showWrongTrajs: false}, partialPortal: Just {entry: {x: 0, y:0}, exit: Nothing}, mode : AddMode}
 
 render :: forall w. UI -> HH.HTML w Action
 render ui =
@@ -94,14 +94,24 @@ render ui =
 drawBlock :: forall w. Maybe Time -> Maybe SelItem -> STBlock -> HH.HTML w Action
 drawBlock mt sel block = HH.div [] $ singleton $ 
   SE.svg [SA.height 360.0, SA.width 360.0, SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y)
-          , HE.onMouseDown $ PortalStart <<< getPos
-          , HE.onMouseMove $ PortalMove <<< getPos
-          , HE.onMouseUp   $ PortalEnd <<< getPos
+          , HE.onMouseDown $ MouseDown <<< getPos
+          , HE.onMouseMove $ MouseMove <<< getPos
+          , HE.onMouseUp   $ MouseUp <<< getPos
+          , HE.onKeyDown \e -> StopPropagation (KE.toEvent e) $ keyDown e
           ]
          [
            SE.image [SA.x 0.0, SA.y 0.0, SA.width 9.0, SA.height 9.0, SA.href "assets/univ_background.svg"],
            drawItemMap (getItemMap block mt sel) lims
          ]
+
+keyDown :: KE.KeyboardEvent -> Action
+keyDown ke = case (KE.key ke) of
+  "a"          -> Mode AddMode
+  "s"          -> Mode SelectMode
+  "r"          -> RotateP
+  "+"          -> ChangeTimeP true
+  "-"          -> ChangeTimeP false
+  _            -> Noop
 
 getUniv :: UI -> Univ
 getUniv {initUniv, partialPortal : Nothing}                        = initUniv
@@ -173,33 +183,58 @@ handleAction a = case a of
   Initialize -> do
     _ <- H.subscribe =<< timer Tick
     pure unit
-  Select se ->            H.modify_ \state -> state {selItem = se}
+  Select se ->            H.modify_ \ui -> ui {selItem = se}
   Rotate se ->            H.modify_ $ updateUI' se rotate
   ChangeTime se isPlus -> H.modify_ $ updateUI' se $ changeTime isPlus
   Move se d ->            H.modify_ $ updateUI' se $ movePos d
-  Tick ->                 H.modify_ \state -> state {stepItem = (state.stepItem + 1) `mod` 10}
+  Tick ->                 H.modify_ \ui -> ui {stepItem = (ui.stepItem + 1) `mod` 10}
   Noop ->                 pure unit
   StopPropagation e cont -> do
      liftEffect $ E.preventDefault e
      liftEffect $ E.stopPropagation e
      handleAction cont
-  PortalStart pos -> H.modify_ $ portalStart pos 
-  PortalMove  pos -> H.modify_ $ portalMove pos 
-  PortalEnd   pos -> H.modify_ $ portalEnd pos 
+  Mode m        -> H.modify_ $ mode m
+  MouseDown pos -> H.modify_ $ mouseDown pos 
+  MouseMove pos -> H.modify_ $ mouseMove pos 
+  MouseUp   pos -> H.modify_ $ mouseUp pos 
+  RotateP ->            H.modify_ $ rotateP
+  ChangeTimeP isPlus ->  H.modify_ $ changeTimeP isPlus
 
-portalStart :: Pos -> UI -> UI
-portalStart pos ui@{partialPortal : Nothing} = ui {partialPortal = Just {entry : pos, exit : Nothing}}
-portalStart _ ui = ui
+mode :: Mode -> UI -> UI
+--Go to add mode creates a dummy portal
+mode AddMode ui = ui {partialPortal = Just {entry : {x: 0, y: 0}, exit : Nothing}, mode = AddMode}
+mode SelectMode ui = ui {partialPortal = Nothing, mode = SelectMode}
 
-portalMove :: Pos -> UI -> UI
-portalMove pos ui@{partialPortal : Just {entry : entry, exit : Nothing}}                                = ui {partialPortal = Just {entry : pos, exit : Nothing}}
-portalMove pos ui@{partialPortal : Just {entry : entry, exit : Just {pos : _, time : time, dir : dir}}} = ui {partialPortal = Just {entry : entry, exit : Just {pos : pos, time : time, dir : dir}}}
-portalMove _ ui = ui
+-- click down validate the entry portal
+mouseDown :: Pos -> UI -> UI
+mouseDown pos ui@{partialPortal : Just {entry : entry, exit : Nothing}, mode : AddMode} = 
+              ui {partialPortal = Just {entry : entry, exit : Just {pos : pos, time : 5, dir : N}}}
+mouseDown _ ui = ui
 
-portalEnd :: Pos -> UI -> UI
-portalEnd pos ui@{partialPortal : Just {entry : entry, exit : Nothing}}     = ui {partialPortal = Just {entry : entry, exit : Just {pos : pos, time : 5, dir : N}}}
-portalEnd pos ui@{partialPortal : Just {entry : entry, exit : Just exit}} = ui {partialPortal = Nothing, initUniv {portals = {entry : entry, exit : exit} : ui.initUniv.portals }}
-portalEnd _ ui = ui
+mouseMove :: Pos -> UI -> UI
+-- Move the entry portal
+mouseMove pos ui@{partialPortal : Just {entry : entry, exit : Nothing}, mode : AddMode} = 
+              ui {partialPortal = Just {entry : pos, exit : Nothing}}
+-- Move the exit portal
+mouseMove pos ui@{partialPortal : Just {entry : entry, exit : Just {pos : _, time : time, dir : dir}}, mode : AddMode} = 
+              ui {partialPortal = Just {entry : entry, exit : Just {pos : pos, time : time, dir : dir}}}
+mouseMove _ ui = ui
+
+mouseUp :: Pos -> UI -> UI
+-- mouse up validates the portal
+mouseUp pos ui@{partialPortal : Just {entry : entry, exit : Just exit}, mode : AddMode} = 
+            ui {partialPortal = Nothing, initUniv {portals = {entry : entry, exit : exit} : ui.initUniv.portals }}
+mouseUp _ ui = ui
+
+rotateP :: UI -> UI
+rotateP ui@{partialPortal : Just {entry : entry, exit : Just {pos : pos, time : time, dir : dir}}, mode : AddMode} = 
+        ui {partialPortal = Just {entry : entry, exit : Just {pos : pos, time : time, dir : turnRel Right_ dir}}}
+rotateP ui = ui
+
+changeTimeP :: Boolean -> UI -> UI
+changeTimeP p ui@{partialPortal : Just {entry : entry, exit : Just {pos : pos, time : time, dir : dir}}, mode : AddMode} = 
+              ui {partialPortal = Just {entry : entry, exit : Just {pos : pos, time : if p then time + 1 else time - 1, dir : dir}}}
+changeTimeP _ ui = ui
 
 timer :: forall m a. MonadAff m => a -> m (HS.Emitter a)
 timer val = do
