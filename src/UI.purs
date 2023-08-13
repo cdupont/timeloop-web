@@ -79,7 +79,7 @@ component =
     }
 
 initialState :: forall i. i -> UI
-initialState _ = {initUniv: univ2, stepItem: 0, selItem: Nothing, config: {showSols: false, showWrongTrajs: false}, partialPortal: Nothing}
+initialState _ = {initUniv: univ2, stepItem: 0, selItem: Nothing, config: {showSols: false, showWrongTrajs: false}, partialPortal: Just {entry: {x: 0, y:0}, exit: Nothing}}
 
 render :: forall w. UI -> HH.HTML w Action
 render ui =
