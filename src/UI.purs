@@ -109,7 +109,8 @@ getUniv {initUniv, partialPortal : Just {entry, exit : Nothing}}   = initUniv {c
 getUniv {initUniv, partialPortal : Just {entry, exit : Just exit}} = initUniv {portals = {entry : entry, exit : exit} : initUniv.portals}
 
 getPos :: ME.MouseEvent -> Pos
-getPos e = {x: floor $ (toNumber $ CSSME.offsetX e) / tileX, y: floor $ (toNumber $ CSSME.offsetY e) / tileY}
+getPos e = {x: floor $ (toNumber $ CSSME.offsetX e) / tileX - 0.5, 
+            y: floor $ (toNumber $ CSSME.offsetY e) / tileY - 0.5}
 
 
 -- Draws items
