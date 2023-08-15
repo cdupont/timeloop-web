@@ -62,6 +62,9 @@ import Web.HTML.Window (document) as Web
 import Web.UIEvent.KeyboardEvent (KeyboardEvent)
 import Web.UIEvent.KeyboardEvent as KE
 import Web.UIEvent.KeyboardEvent.EventTypes as KET
+import Web.UIEvent.WheelEvent.EventTypes as WET
+import Web.UIEvent.WheelEvent as WE
+
 import Halogen.Query.Event (eventListener)
 import Web.Event.Event as E
 import Web.UIEvent.MouseEvent as ME
@@ -79,39 +82,32 @@ component =
     }
 
 initialState :: forall i. i -> UI
-initialState _ = {initUniv: univ2, stepItem: 0, selItem: Nothing, config: {showSols: false, showWrongTrajs: false}, partialPortal: Just {entry: {x: 0, y:0}, exit: Nothing}, mode : AddMode}
+initialState _ = {initUniv: univ0, stepItem: 0, selItem: Nothing, config: {showSols: false, showWrongTrajs: false}, partialPortal: Just {entry: {x: 0, y:0}, exit: Nothing}, mode : AddMode}
 
 render :: forall w. UI -> HH.HTML w Action
 render ui =
     HH.div []
-      [ HH.div [HP.class_ (ClassName "config")] 
-      [drawBlock Nothing ui.selItem {univ: getUniv ui, walkers: []}],
+      [ 
         HH.div [HP.class_ (ClassName "solutions")] 
-               (map (drawBlock (Just ui.stepItem) Nothing) (getValidSTBlocks $ getUniv ui))
-      ]
+               (if length blocks == 0 
+                 then [drawBlock Nothing ui.selItem {univ: getUniv ui, walkers: []}]
+                 else map (drawBlock (Just ui.stepItem) Nothing) blocks)
+      ] where
+        blocks = getValidSTBlocks $ getUniv ui
+
 
            
 drawBlock :: forall w. Maybe Time -> Maybe SelItem -> STBlock -> HH.HTML w Action
 drawBlock mt sel block = HH.div [] $ singleton $ 
-  SE.svg [SA.height 360.0, SA.width 360.0, SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y)
+  SE.svg [SA.height 432.0, SA.width 432.0, SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y)
           , HE.onMouseDown $ MouseDown <<< getPos
           , HE.onMouseMove $ MouseMove <<< getPos
           , HE.onMouseUp   $ MouseUp <<< getPos
-          , HE.onKeyDown \e -> StopPropagation (KE.toEvent e) $ keyDown e
           ]
          [
-           SE.image [SA.x 0.0, SA.y 0.0, SA.width 9.0, SA.height 9.0, SA.href "assets/univ_background.svg"],
+           SE.image [SA.x 0.0, SA.y 0.0, SA.width 11.0, SA.height 11.0, SA.href "assets/univ_background.svg"],
            drawItemMap (getItemMap block mt sel) lims
          ]
-
-keyDown :: KE.KeyboardEvent -> Action
-keyDown ke = case (KE.key ke) of
-  "a"          -> Mode AddMode
-  "s"          -> Mode SelectMode
-  "r"          -> RotateP
-  "+"          -> ChangeTimeP true
-  "-"          -> ChangeTimeP false
-  _            -> Noop
 
 getUniv :: UI -> Univ
 getUniv {initUniv, partialPortal : Nothing}                        = initUniv
@@ -128,7 +124,7 @@ drawItemMap :: forall w. ItemMap -> Limits -> HH.HTML w Action
 drawItemMap is {first: {x: minX, y: minY}, last: {x: maxX, y: maxY}} = SE.g [] $ map getTile is
 
 lims :: Limits
-lims = {first: {x: 0, y: 0}, last: {x: 9, y: 9}}
+lims = {first: {x: 0, y: 0}, last: {x: 11, y: 11}}
 
 
 getItemMap :: STBlock -> Maybe Time -> Maybe SelItem -> ItemMap
@@ -182,6 +178,17 @@ handleAction :: forall output m. MonadAff m => Action -> H.HalogenM UI Action ()
 handleAction a = case a of
   Initialize -> do
     _ <- H.subscribe =<< timer Tick
+    document <- H.liftEffect $ Web.document =<< Web.window
+    H.subscribe' \sid ->
+      eventListener
+        KET.keyup
+        (HTMLDocument.toEventTarget document)
+        keyEvent
+    H.subscribe' \sid ->
+      eventListener
+        WET.wheel
+        (HTMLDocument.toEventTarget document)
+        wheelEvent
     pure unit
   Select se ->            H.modify_ \ui -> ui {selItem = se}
   Rotate se ->            H.modify_ $ updateUI' se rotate
@@ -200,6 +207,22 @@ handleAction a = case a of
   RotateP ->            H.modify_ $ rotateP
   ChangeTimeP isPlus ->  H.modify_ $ changeTimeP isPlus
 
+keyEvent :: E.Event -> Maybe Action
+keyEvent e = case (spy "key: " $ KE.key <$> KE.fromEvent e) of
+  Just "a"     -> Just $ Mode AddMode
+  Just "s"     -> Just $ Mode SelectMode
+  Just "r"     -> Just $ RotateP
+  Just "+"     -> Just $ ChangeTimeP true
+  Just "-"     -> Just $ ChangeTimeP false
+  _            -> Nothing
+
+wheelEvent :: E.Event -> Maybe Action
+wheelEvent e = case (spy "key: " $ WE.deltaY <$> WE.fromEvent e) of
+  Just 1.0    -> Just $ ChangeTimeP true
+  Just (-1.0) -> Just $ ChangeTimeP false
+  _            -> Nothing
+ 
+
 mode :: Mode -> UI -> UI
 --Go to add mode creates a dummy portal
 mode AddMode ui = ui {partialPortal = Just {entry : {x: 0, y: 0}, exit : Nothing}, mode = AddMode}
@@ -208,7 +231,7 @@ mode SelectMode ui = ui {partialPortal = Nothing, mode = SelectMode}
 -- click down validate the entry portal
 mouseDown :: Pos -> UI -> UI
 mouseDown pos ui@{partialPortal : Just {entry : entry, exit : Nothing}, mode : AddMode} = 
-              ui {partialPortal = Just {entry : entry, exit : Just {pos : pos, time : 5, dir : N}}}
+              ui {partialPortal = Just {entry : entry, exit : Just {pos : pos, time : 0, dir : N}}}
 mouseDown _ ui = ui
 
 mouseMove :: Pos -> UI -> UI
@@ -267,10 +290,10 @@ updateUI f ui = case ui.selItem of
   Nothing -> ui 
 
 updateUI' :: SelItem -> (PTD -> PTD) -> UI -> UI
-updateUI' {itemType: EntryPortal, itemIndex: i} f = over (_initUniv <<< _portals <<< ix (spy "i" i) <<< _entry) (toPos f)
-updateUI' {itemType: ExitPortal, itemIndex: i} f  = over (_initUniv <<< _portals <<< ix (spy "i" i) <<< _exit) f
-updateUI' {itemType: Entry, itemIndex: i} f       = over (_initUniv <<< _consumers <<< ix (spy "i" i)) (toPos f) 
-updateUI' {itemType: Exit, itemIndex: i} f        = over (_initUniv <<< _emitters <<< ix (spy "i" i)) f 
+updateUI' {itemType: EntryPortal, itemIndex: i} f = over (_initUniv <<< _portals <<< ix i <<< _entry) (toPos f)
+updateUI' {itemType: ExitPortal, itemIndex: i} f  = over (_initUniv <<< _portals <<< ix i <<< _exit) f
+updateUI' {itemType: Entry, itemIndex: i} f       = over (_initUniv <<< _consumers <<< ix i) (toPos f) 
+updateUI' {itemType: Exit, itemIndex: i} f        = over (_initUniv <<< _emitters <<< ix i) f 
 updateUI' _ _ = undefined
 
 toPos :: (PTD -> PTD) -> Pos -> Pos 

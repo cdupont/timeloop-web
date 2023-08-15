@@ -21,8 +21,6 @@ import UI
 
 main :: Effect Unit
 main = void $ unsafePartial do
-  log $ show $ univ2
-  log $ show $ getValidSTBlocks $ univ2
   HA.runHalogenAff do
     body <- HA.awaitBody
     runUI component unit body

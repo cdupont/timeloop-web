@@ -81,7 +81,6 @@ getTile {itemType, itemIndex, pos, dirs, time, high, col, sel, top} =
   SE.g [SA.class_ $ ClassName $ "tile" <> (guard top " top"),
         SA.transform [SAT.Translate (toNumber pos.x) (toNumber pos.y)],
         HE.onClick \e -> StopPropagation (ME.toEvent e) $ Select $ Just {itemType, itemIndex},
-        HE.onKeyDown \e -> StopPropagation (KBE.toEvent e) $ keyDown e {itemType, itemIndex},
         HP.tabIndex 0
         ]
         [

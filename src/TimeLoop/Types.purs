@@ -97,7 +97,7 @@ type STBlock = {
 type Limits = { first :: Pos, last :: Pos}
 
 maxStep :: Int
-maxStep = 10
+maxStep = 12
 
 --  sample data *
 
@@ -125,6 +125,11 @@ initSource = { pos: {x:0, y:0}, time:0, dir:E}
 --portal1 :: Portal
 --portal1 = Portal (Sink (PTD (Pos 0 0) 0 S)) (Source (PTD (Pos 1 0) 1 W))
 --
+univ0 :: Univ
+univ0 = {portals : [], 
+         emitters : [{pos : {x : 1, y : 3}, time : 0, dir : E}], 
+         consumers : []}
+
 --No solution (self deviating)
 univ1 :: Univ
 univ1 = {portals : [{entry : {x : 6, y : 0}, 
