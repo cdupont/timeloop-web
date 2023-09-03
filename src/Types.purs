@@ -74,11 +74,9 @@ data Mode = SelectMode | AddMode
 data Action = Initialize
             | Mode Mode
             | Select (Maybe SelItem)
-            | Rotate SelItem 
-            | ChangeTime SelItem Boolean
-            | Move SelItem Dir
-            | RotateP
-            | ChangeTimeP Boolean
+            | Delete
+            | Rotate
+            | ChangeTime Boolean
             | StopPropagation Event Action
             | Tick
             | Noop

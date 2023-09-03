@@ -191,9 +191,6 @@ handleAction a = case a of
         wheelEvent
     pure unit
   Select se ->            H.modify_ \ui -> ui {selItem = se}
-  Rotate se ->            H.modify_ $ updateUI' se rotate
-  ChangeTime se isPlus -> H.modify_ $ updateUI' se $ changeTime isPlus
-  Move se d ->            H.modify_ $ updateUI' se $ movePos d
   Tick ->                 H.modify_ \ui -> ui {stepItem = (ui.stepItem + 1) `mod` 10}
   Noop ->                 pure unit
   StopPropagation e cont -> do
@@ -204,22 +201,23 @@ handleAction a = case a of
   MouseDown pos -> H.modify_ $ mouseDown pos 
   MouseMove pos -> H.modify_ $ mouseMove pos 
   MouseUp   pos -> H.modify_ $ mouseUp pos 
-  RotateP ->            H.modify_ $ rotateP
-  ChangeTimeP isPlus ->  H.modify_ $ changeTimeP isPlus
+  Rotate            ->  H.modify_ $ rotate
+  ChangeTime isPlus ->  H.modify_ $ changeTime isPlus
 
 keyEvent :: E.Event -> Maybe Action
 keyEvent e = case (spy "key: " $ KE.key <$> KE.fromEvent e) of
   Just "a"     -> Just $ Mode AddMode
   Just "s"     -> Just $ Mode SelectMode
-  Just "r"     -> Just $ RotateP
-  Just "+"     -> Just $ ChangeTimeP true
-  Just "-"     -> Just $ ChangeTimeP false
+  Just "r"     -> Just $ Rotate
+  Just "+"     -> Just $ ChangeTime true
+  Just "-"     -> Just $ ChangeTime false
+  Just "d"     -> Just $ Delete
   _            -> Nothing
 
 wheelEvent :: E.Event -> Maybe Action
 wheelEvent e = case (spy "key: " $ WE.deltaY <$> WE.fromEvent e) of
-  Just 1.0    -> Just $ ChangeTimeP true
-  Just (-1.0) -> Just $ ChangeTimeP false
+  Just 1.0    -> Just $ ChangeTime true
+  Just (-1.0) -> Just $ ChangeTime false
   _            -> Nothing
  
 
@@ -249,15 +247,15 @@ mouseUp pos ui@{partialPortal : Just {entry : entry, exit : Just exit}, mode : A
             ui {partialPortal = Nothing, initUniv {portals = {entry : entry, exit : exit} : ui.initUniv.portals }}
 mouseUp _ ui = ui
 
-rotateP :: UI -> UI
-rotateP ui@{partialPortal : Just {entry : entry, exit : Just {pos : pos, time : time, dir : dir}}, mode : AddMode} = 
-        ui {partialPortal = Just {entry : entry, exit : Just {pos : pos, time : time, dir : turnRel Right_ dir}}}
-rotateP ui = ui
+rotate :: UI -> UI
+rotate ui@{partialPortal : Just {entry : entry, exit : Just {pos : pos, time : time, dir : dir}}, mode : AddMode} = 
+       ui {partialPortal = Just {entry : entry, exit : Just {pos : pos, time : time, dir : turnRel Right_ dir}}}
+rotate ui = ui
 
-changeTimeP :: Boolean -> UI -> UI
-changeTimeP p ui@{partialPortal : Just {entry : entry, exit : Just {pos : pos, time : time, dir : dir}}, mode : AddMode} = 
-              ui {partialPortal = Just {entry : entry, exit : Just {pos : pos, time : if p then time + 1 else time - 1, dir : dir}}}
-changeTimeP _ ui = ui
+changeTime :: Boolean -> UI -> UI
+changeTime p ui@{partialPortal : Just {entry : entry, exit : Just {pos : pos, time : time, dir : dir}}, mode : AddMode} = 
+             ui {partialPortal = Just {entry : entry, exit : Just {pos : pos, time : if p then time + 1 else time - 1, dir : dir}}}
+changeTime _ ui = ui
 
 timer :: forall m a. MonadAff m => a -> m (HS.Emitter a)
 timer val = do
@@ -266,22 +264,6 @@ timer val = do
     Aff.delay $ Milliseconds 1000.0
     H.liftEffect $ HS.notify listener val
   pure emitter
-
---solution :: Univ -> UI -> UI
---solution u ui = set #initUniv u ui
-
-movePos :: Dir -> PTD -> PTD
-movePos N ptd = ptd {pos {y = ptd.pos.y -1}}  
-movePos S ptd = ptd {pos {y = ptd.pos.y +1}}  
-movePos E ptd = ptd {pos {x = ptd.pos.x +1}}  
-movePos W ptd = ptd {pos {x = ptd.pos.x -1}}  
-
-rotate :: PTD -> PTD
-rotate = turn' Right_
-
-changeTime :: Boolean -> PTD -> PTD
-changeTime true  ptd  = ptd {time = ptd.time + 1}
-changeTime false  ptd = ptd {time = ptd.time - 1}
 
 
 updateUI :: (PTD -> PTD) -> UI -> UI

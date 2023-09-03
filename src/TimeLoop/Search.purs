@@ -49,10 +49,9 @@ getNextStep :: Array Walker -> {sources :: Array Source, sinks :: Array Sink} ->
 getNextStep ws {sources, sinks} = 
   -- We move all walkers on step. New walkers appears on the sources. Walkers that are on a Sink are removed.
   -- This will be used by mapAccumL as input for the next step 
-  --{ accum : (ws <> emitted) \\ consummed,  
   { accum : concatMap move $ posGroups $ consum (ws <> emitted),  
---  -- We store the current walkers, together with the new walkers appearing at the sources.
---  -- This will be stored by mapAccumL in the final array
+  -- We store the current walkers, together with the new walkers appearing at the sources.
+  -- This will be stored by mapAccumL in the final array
     value : ws <> emitted}
   where
   -- group the walkers that are on the same position

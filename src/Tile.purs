@@ -64,16 +64,6 @@ asset Collision   = "assets/col.svg"
 timeAsset = "assets/time.svg"
 selAsset = "assets/sel.svg"
 
-keyDown :: KBE.KeyboardEvent -> SelItem-> Action
-keyDown ke se = case (KBE.key ke) of
-  "ArrowUp"    -> Move se N
-  "ArrowDown"  -> Move se S
-  "ArrowRight" -> Move se E
-  "ArrowLeft"  -> Move se W
-  "r"          -> Rotate se
-  "+"          -> ChangeTime se true
-  "-"          -> ChangeTime se false
-  _            -> Noop
 
 -- Get the tile with position, events and highlight
 getTile :: forall w. Item -> HTML w Action 
