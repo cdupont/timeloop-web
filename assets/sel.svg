@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="36"
+   height="36"
+   viewBox="0 0 9.5249998 9.5249999"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.2.2 (732a01da63, 2022-12-09, custom)"
+   sodipodi:docname="sel.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:zoom="15.884269"
+     inkscape:cx="12.496641"
+     inkscape:cy="22.380633"
+     inkscape:window-width="1846"
+     inkscape:window-height="1016"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs2" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="fill:#ff2525;fill-opacity:1;stroke:#dcdb00;stroke-width:0;stroke-linejoin:bevel;stroke-dasharray:none;stroke-dashoffset:0"
+       id="rect7891"
+       width="1.4897554"
+       height="2.6675181"
+       x="4.0823169"
+       y="-0.0028630011" />
+    <rect
+       style="fill:#ff2525;fill-opacity:1;stroke:#dcdb00;stroke-width:0;stroke-linejoin:bevel;stroke-dasharray:none;stroke-dashoffset:0"
+       id="rect7891-5"
+       width="1.4897554"
+       height="2.6675181"
+       x="4.035079"
+       y="6.8806505" />
+    <g
+       id="g8060"
+       transform="rotate(90,4.4588223,6.081833)">
+      <rect
+         style="fill:#ff2525;fill-opacity:1;stroke:#dcdb00;stroke-width:0;stroke-linejoin:bevel;stroke-dasharray:none;stroke-dashoffset:0"
+         id="rect7891-3"
+         width="1.4897554"
+         height="2.6675181"
+         x="2.4102461"
+         y="1.0044427" />
+      <rect
+         style="fill:#ff2525;fill-opacity:1;stroke:#dcdb00;stroke-width:0;stroke-linejoin:bevel;stroke-dasharray:none;stroke-dashoffset:0"
+         id="rect7891-5-5"
+         width="1.4897554"
+         height="2.6675181"
+         x="2.3630083"
+         y="7.8879561" />
+    </g>
+  </g>
+</svg>
