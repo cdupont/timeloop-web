@@ -100,14 +100,19 @@ render ui =
 drawBlock :: forall w. Maybe Time -> Maybe SelItem -> STBlock -> HH.HTML w Action
 drawBlock mt sel block = HH.div [] $ singleton $ 
   SE.svg [SA.height 432.0, SA.width 432.0, SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y)
-          , HE.onMouseDown $ MouseDown <<< getPos
-          , HE.onMouseMove $ MouseMove <<< getPos
-          , HE.onMouseUp   $ MouseUp <<< getPos
+          , HE.onMouseDown $ \e -> StopPropagation (ME.toEvent e) $ Create $ getPos e
+          , HE.onMouseMove $ \e -> StopPropagation (ME.toEvent e) $ mouseMove e
           ]
          [
            SE.image [SA.x 0.0, SA.y 0.0, SA.width 11.0, SA.height 11.0, SA.href "assets/univ_background.svg"],
            drawItemMap (getItemMap block mt sel) lims
          ]
+
+mouseMove :: ME.MouseEvent -> Action
+mouseMove me = 
+  if (ME.buttons me) == 1 
+    then Move $ getPos me
+    else Noop 
 
 getUniv :: UI -> Univ
 getUniv {initUniv, partialPortal : Nothing}                        = initUniv
@@ -198,12 +203,11 @@ handleAction a = case a of
      liftEffect $ E.stopPropagation e
      handleAction cont
   Mode m        -> H.modify_ $ mode m
-  MouseDown pos -> H.modify_ $ mouseDown pos 
-  MouseMove pos -> H.modify_ $ mouseMove pos 
-  MouseUp   pos -> H.modify_ $ mouseUp pos 
   Rotate            ->  H.modify_ $ rotate
   ChangeTime isPlus ->  H.modify_ $ changeTime isPlus
-  Delete        -> H.modify_ $ identity 
+  Delete        -> H.modify_ $ identity
+  Create      p -> undefined 
+  Move        p -> H.modify_ $ updateUI $ \ptd -> ptd {pos = p} 
 
 keyEvent :: E.Event -> Maybe Action
 keyEvent e = case (spy "key: " $ KE.key <$> KE.fromEvent e) of
@@ -227,26 +231,26 @@ mode :: Mode -> UI -> UI
 mode AddMode ui = ui {partialPortal = Just {entry : {x: 0, y: 0}, exit : Nothing}, mode = AddMode}
 mode SelectMode ui = ui {partialPortal = Nothing, mode = SelectMode}
 
--- click down validate the entry portal
-mouseDown :: Pos -> UI -> UI
-mouseDown pos ui@{partialPortal : Just {entry : entry, exit : Nothing}, mode : AddMode} = 
-              ui {partialPortal = Just {entry : entry, exit : Just {pos : pos, time : 0, dir : N}}}
-mouseDown _ ui = ui
-
-mouseMove :: Pos -> UI -> UI
--- Move the entry portal
-mouseMove pos ui@{partialPortal : Just {entry : entry, exit : Nothing}, mode : AddMode} = 
-              ui {partialPortal = Just {entry : pos, exit : Nothing}}
--- Move the exit portal
-mouseMove pos ui@{partialPortal : Just {entry : entry, exit : Just {pos : _, time : time, dir : dir}}, mode : AddMode} = 
-              ui {partialPortal = Just {entry : entry, exit : Just {pos : pos, time : time, dir : dir}}}
-mouseMove _ ui = ui
-
-mouseUp :: Pos -> UI -> UI
--- mouse up validates the portal
-mouseUp pos ui@{partialPortal : Just {entry : entry, exit : Just exit}, mode : AddMode} = 
-            ui {partialPortal = Nothing, initUniv {portals = {entry : entry, exit : exit} : ui.initUniv.portals }}
-mouseUp _ ui = ui
+---- click down validate the entry portal
+--mouseDown :: Pos -> UI -> UI
+--mouseDown pos ui@{partialPortal : Just {entry : entry, exit : Nothing}, mode : AddMode} = 
+--              ui {partialPortal = Just {entry : entry, exit : Just {pos : pos, time : 0, dir : N}}}
+--mouseDown _ ui = ui
+--
+--mouseMove :: Pos -> UI -> UI
+---- Move the entry portal
+--mouseMove pos ui@{partialPortal : Just {entry : entry, exit : Nothing}, mode : AddMode} = 
+--              ui {partialPortal = Just {entry : pos, exit : Nothing}}
+---- Move the exit portal
+--mouseMove pos ui@{partialPortal : Just {entry : entry, exit : Just {pos : _, time : time, dir : dir}}, mode : AddMode} = 
+--              ui {partialPortal = Just {entry : entry, exit : Just {pos : pos, time : time, dir : dir}}}
+--mouseMove _ ui = ui
+--
+--mouseUp :: Pos -> UI -> UI
+---- mouse up validates the portal
+--mouseUp pos ui@{partialPortal : Just {entry : entry, exit : Just exit}, mode : AddMode} = 
+--            ui {partialPortal = Nothing, initUniv {portals = {entry : entry, exit : exit} : ui.initUniv.portals }}
+--mouseUp _ ui = ui
 
 rotate :: UI -> UI
 rotate ui@{partialPortal : Just {entry : entry, exit : Just {pos : pos, time : time, dir : dir}}, mode : AddMode} = 
@@ -269,7 +273,7 @@ timer val = do
 
 updateUI :: (PTD -> PTD) -> UI -> UI
 updateUI f ui = case ui.selItem of
-  Just sel -> updateUI' sel f ui
+  Just sel -> trace "updating" \_ -> updateUI' sel f ui
   Nothing -> ui 
 
 updateUI' :: SelItem -> (PTD -> PTD) -> UI -> UI

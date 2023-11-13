@@ -74,13 +74,12 @@ data Mode = SelectMode | AddMode
 data Action = Initialize
             | Mode Mode
             | Select (Maybe SelItem)
+            | Create Pos
+            | Move Pos
             | Delete
             | Rotate
             | ChangeTime Boolean
             | StopPropagation Event Action
             | Tick
             | Noop
-            | MouseDown Pos
-            | MouseMove Pos
-            | MouseUp Pos
 
