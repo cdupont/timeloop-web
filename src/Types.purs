@@ -49,17 +49,10 @@ type UI = {
   stepItem :: Time,          -- A time step counter
   selItem  :: Maybe SelItem, 
   mode :: Mode,
-  partialPortal :: Maybe PartialPortal,
   config   :: Config}   
 
 _initUniv :: forall a r. Lens' { initUniv :: a | r } a
 _initUniv = prop (Proxy :: Proxy "initUniv")
-_partialPortal :: forall a r. Lens' { partialPortal :: a | r } a
-_partialPortal = prop (Proxy :: Proxy "partialPortal")
-
-type PartialPortal = {
-  entry :: Pos,
-  exit :: Maybe Source} 
 
 type Config = {
   showSols :: Boolean,
