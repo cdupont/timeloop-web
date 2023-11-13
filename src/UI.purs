@@ -203,6 +203,7 @@ handleAction a = case a of
   MouseUp   pos -> H.modify_ $ mouseUp pos 
   Rotate            ->  H.modify_ $ rotate
   ChangeTime isPlus ->  H.modify_ $ changeTime isPlus
+  Delete        -> H.modify_ $ identity 
 
 keyEvent :: E.Event -> Maybe Action
 keyEvent e = case (spy "key: " $ KE.key <$> KE.fromEvent e) of
