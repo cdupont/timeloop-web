@@ -90,8 +90,8 @@ render ui =
       [ 
         HH.div [HP.class_ (ClassName "solutions")] 
                (if length blocks == 0 
-               then [drawBlock Nothing ui.selItem {univ: ui.initUniv, walkers: []}]
-                 else map (drawBlock (Just ui.stepItem) Nothing) blocks)
+                then [drawBlock Nothing ui.selItem {univ: ui.initUniv, walkers: []}]
+                else map (drawBlock (Just ui.stepItem) ui.selItem) blocks)
       ] where
         blocks = getValidSTBlocks $ ui.initUniv
 
@@ -133,32 +133,61 @@ getItemMap stb mt sel = selectTopTile mt $ getItemMap' stb mt sel
 
 -- Get the various items in Univ 
 getItemMap' :: STBlock -> Maybe Time -> Maybe SelItem -> Array Item 
-getItemMap' {univ : {portals, emitters, consumers}, walkers : walkers} mt sel = ems <> cos <> ps <> ws where
-  -- convert STBlock elements into items
-  ems = zipWith (getItem Exit mt Black sel) emitters (0..10)
-  cos = zipWith (\pos i -> {itemType : EntryPortal, itemIndex : i, pos : pos, dirs : [], time : Nothing, high : false, col : (toColor $ i+1), sel : false, top : true}) consumers (0..10)
-  ps = concat $ zipWith (\{exit, entry} i -> [getItem ExitPortal  mt (toColor $ i+1) sel exit  i, 
-                                              {itemType : EntryPortal, itemIndex : i, pos : entry, dirs : [], time : Nothing, high : false, col : (toColor $ i+1), sel : false, top : true}]) portals (0..10)
-  ws = map col $ groupBy ((==) `on` (_.pos &&& _.time)) $ sortBy (comparing (_.pos &&& _.time)) $ walkers 
+getItemMap' {univ : {portals, emitters, consumers}, walkers : walkers} mt sel = 
+  (getEmitterItems emitters mt sel) <> 
+  (getPortalItems portals mt sel) <> 
+  (getWalkerItems walkers mt)
+  
+getEmitterItems :: Array Source -> Maybe Time -> Maybe SelItem -> Array Item
+getEmitterItems emitters mt sel = zipWith getE emitters (0..10) where
+  getE exit i = {itemType : Exit, 
+                 itemIndex : i, 
+                 pos : exit.pos, 
+                 dirs : [exit.dir], 
+                 time : Just $ exit.time, 
+                 high : (Just $ exit.time) == mt, 
+                 col : Black, 
+                 sel : sel == Just {itemType: Exit, itemIndex: i}, 
+                 top : true}
+
+getPortalItems :: Array Portal -> Maybe Time -> Maybe SelItem -> Array Item
+getPortalItems portals mt sel = concat $ zipWith getP portals (0..10) where
+  getP {exit, entry} i = [{itemType : ExitPortal, 
+                           itemIndex : i, 
+                           pos : exit.pos, 
+                           dirs : [exit.dir], 
+                           time : Just $ exit.time, 
+                           high : (Just $ exit.time) == mt, 
+                           col : (toColor $ i+1), 
+                           sel : sel == Just {itemType: ExitPortal, itemIndex: i}, 
+                           top : true},
+                          {itemType : EntryPortal, 
+                           itemIndex : i, 
+                           pos : entry, 
+                           dirs : [], 
+                           time : Nothing, 
+                           high : false, 
+                           col : (toColor $ i+1), 
+                           sel : sel == Just {itemType: EntryPortal, itemIndex: i}, 
+                           top : true}]
+
+getWalkerItems :: Array Walker -> Maybe Time -> Array Item
+getWalkerItems walkers mt = map getW wsGroups where
+  -- Group walkers by time and pos 
+  wsGroups = groupBy ((==) `on` (_.pos &&& _.time)) $ sortBy (comparing (_.pos &&& _.time)) $ walkers 
   -- Create collisions for walkers at the same pos and time
-  col as = if ANE.length as == 1 
-             then getItem' Walker_   mt Black Nothing as 0 
-             else getItem' Collision mt Black Nothing as 0
-
-getItem :: ItemType -> Maybe Time -> Color -> Maybe SelItem -> PTD -> Int -> Item
-getItem  it mt c sel ptd i = getItem' it mt c sel (ANE.singleton ptd) i
-
-getItem' :: ItemType -> Maybe Time -> Color -> Maybe SelItem -> ANE.NonEmptyArray PTD -> Int -> Item
-getItem' it mt c sel ptds i = {itemType:  it, 
-                               itemIndex: i, 
-                               pos:       first.pos,
-                               dirs:      ANE.toArray $ map _.dir ptds, 
-                               time:      Just first.time, 
-                               high:      Just first.time == mt,
-                               col:       c,
-                               sel:       sel == Just {itemType: it, itemIndex: i},
-                               top:       true} where
-  first = ANE.head ptds
+  getW as = if ANE.length as == 1 
+              then getW' Walker_   as
+              else getW' Collision as
+  getW' it ptds = {itemType:  it, 
+                  itemIndex: 0, 
+                  pos: _.pos $ ANE.head ptds, 
+                  dirs: ANE.toArray $ map _.dir ptds, 
+                  time: Just $ _.time $ ANE.head ptds, 
+                  high: (Just $ _.time $ ANE.head ptds) == mt, 
+                  col: Black, 
+                  sel: false,
+                  top: true} 
 
 
 selectTopTile ::  Maybe Time -> Array Item -> Array Item
@@ -191,7 +220,7 @@ handleAction a = case a of
         (HTMLDocument.toEventTarget document)
         wheelEvent
     pure unit
-  Select se ->            H.modify_ \ui -> ui {selItem = se}
+  Select se ->            trace ("Select" <> show se) \_ -> H.modify_ \ui -> ui {selItem = se}
   Tick ->                 H.modify_ \ui -> ui {stepItem = (ui.stepItem + 1) `mod` 10}
   Noop ->                 pure unit
   StopPropagation e cont -> do
@@ -228,8 +257,8 @@ mode AddMode ui = ui {mode = AddMode}
 mode SelectMode ui = ui {mode = SelectMode}
 
 createPortal :: Pos -> UI -> UI
-createPortal p ui = ui {selItem = Just {itemType: ExitPortal, itemIndex: 0}, 
-                        initUniv {portals = {entry: p, exit: {pos: p, time: 0, dir: N}} : ui.initUniv.portals}}
+createPortal p ui = ui {selItem = Just {itemType: ExitPortal, itemIndex: length ui.initUniv.portals}, 
+                        initUniv {portals = ui.initUniv.portals `snoc` {entry: p, exit: {pos: p, time: 0, dir: N}}}}
 
 
 timer :: forall m a. MonadAff m => a -> m (HS.Emitter a)
