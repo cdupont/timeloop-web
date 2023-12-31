@@ -230,9 +230,10 @@ handleAction a = case a of
   Mode m        -> H.modify_ $ mode m
   Rotate            ->  H.modify_ $ updateUI $ \ptd -> ptd {dir = turnRel Right_ ptd.dir}
   ChangeTime isPlus ->  H.modify_ $ updateUI $ \ptd -> ptd {time =  if isPlus then ptd.time + 1 else ptd.time - 1}
-  Delete        -> H.modify_ $ identity
+  Delete        -> H.modify_ $ delItem 
   Create      p -> H.modify_ $ createPortal p 
   Move        p -> H.modify_ $ updateUI $ \ptd -> ptd {pos = p} 
+  MoveRel     d -> H.modify_ $ updateUI $ \ptd -> ptd {pos = simpleMove' d ptd.pos} 
 
 keyEvent :: E.Event -> Maybe Action
 keyEvent e = case (spy "key: " $ KE.key <$> KE.fromEvent e) of
@@ -242,12 +243,16 @@ keyEvent e = case (spy "key: " $ KE.key <$> KE.fromEvent e) of
   Just "+"     -> Just $ ChangeTime true
   Just "-"     -> Just $ ChangeTime false
   Just "d"     -> Just $ Delete
+  Just "ArrowRight" -> Just $ MoveRel E 
+  Just "ArrowLeft"  -> Just $ MoveRel W
+  Just "ArrowUp"    -> Just $ MoveRel N 
+  Just "ArrowDown"  -> Just $ MoveRel S 
   _            -> Nothing
 
 wheelEvent :: E.Event -> Maybe Action
 wheelEvent e = case (spy "key: " $ WE.deltaY <$> WE.fromEvent e) of
-  Just 1.0    -> Just $ ChangeTime true
-  Just (-1.0) -> Just $ ChangeTime false
+  Just w | w > 0.0 -> Just $ ChangeTime true
+  Just w | w < 0.0 -> Just $ ChangeTime false
   _            -> Nothing
  
 
@@ -281,6 +286,18 @@ updateUI' {itemType: ExitPortal, itemIndex: i} f  = over (_initUniv <<< _portals
 updateUI' {itemType: Entry, itemIndex: i} f       = over (_initUniv <<< _consumers <<< ix i) (toPos f) 
 updateUI' {itemType: Exit, itemIndex: i} f        = over (_initUniv <<< _emitters <<< ix i) f 
 updateUI' _ _ = undefined
+
+delItem :: UI -> UI
+delItem ui = case ui.selItem of
+  Just sel -> trace "deleting" \_ -> delItem' sel ui 
+  Nothing -> ui 
+
+delItem' :: SelItem -> UI -> UI
+delItem' {itemType: EntryPortal, itemIndex: i} ui = ui { initUniv { portals = fromMaybe undefined (deleteAt i ui.initUniv.portals)}} 
+delItem' {itemType: ExitPortal, itemIndex: i} ui  = ui { initUniv { portals = fromMaybe undefined (deleteAt i ui.initUniv.portals)}} 
+delItem' {itemType: Entry, itemIndex: i} ui       = ui { initUniv { consumers = fromMaybe undefined (deleteAt i ui.initUniv.consumers)}} 
+delItem' {itemType: Exit, itemIndex: i} ui        = ui { initUniv { emitters = fromMaybe undefined (deleteAt i ui.initUniv.emitters)}} 
+delItem' _ _ = undefined
 
 toPos :: (PTD -> PTD) -> Pos -> Pos 
 toPos f p = _.pos $ f ({pos: p, time: 0, dir: N})

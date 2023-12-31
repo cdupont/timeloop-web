@@ -25,6 +25,8 @@ derive instance Ord ItemType
 instance i ∷ Show ItemType where
    show = genericShow 
 
+selectable = [EntryPortal, ExitPortal, Entry, Exit]
+
 data Color = Black | Red | Blue
 
 derive instance Generic Color _
@@ -69,6 +71,7 @@ data Action = Initialize
             | Select (Maybe SelItem)
             | Create Pos
             | Move Pos
+            | MoveRel Dir
             | Delete
             | Rotate
             | ChangeTime Boolean

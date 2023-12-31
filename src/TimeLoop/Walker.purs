@@ -19,11 +19,14 @@ move ws = map (turn Right_ >>> simpleMove) ws
 
 -- Move one step in a flat universe.
 simpleMove :: Walker -> Walker
-simpleMove w = case w.dir of
-  S -> w { pos {y = w.pos.y + 1}, time = w.time + 1}
-  N -> w { pos {y = w.pos.y - 1}, time = w.time + 1}
-  E -> w { pos {x = w.pos.x + 1}, time = w.time + 1}
-  W -> w { pos {x = w.pos.x - 1}, time = w.time + 1}
+simpleMove w = w { pos = simpleMove' w.dir w.pos, time = w.time + 1}
+
+simpleMove' :: Dir -> Pos -> Pos
+simpleMove' S p = p {y = p.y + 1}
+simpleMove' N p = p {y = p.y - 1}
+simpleMove' E p = p {x = p.x + 1}
+simpleMove' W p = p {x = p.x - 1}
+
 
 -- Turn a walker using a relative direction
 turn :: RelDir -> Walker -> Walker

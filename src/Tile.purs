@@ -67,18 +67,16 @@ selAsset = "assets/sel.svg"
 
 -- Get the tile with position, events and highlight
 getTile :: forall w. Item -> HTML w Action 
-getTile {itemType, itemIndex, pos, dirs, time, high, col, sel, top} = 
-  SE.g [SA.class_ $ ClassName $ "tile" <> (guard top " top"),
-        SA.transform [SAT.Translate (toNumber pos.x) (toNumber pos.y)],
-        HE.onMouseDown $ \e -> StopPropagation (ME.toEvent e) $ Select $ Just {itemType, itemIndex},
-        HP.tabIndex 0
-        ]
-        [
-          SE.svg [SA.height 1.0, SA.width 1.0, SA.viewBox 0.0 0.0 tileX tileY] $ 
+getTile {itemType, itemIndex, pos, dirs, time, high, col, sel, top} = SE.g attrs childs where
+
+  attrs = [SA.class_ $ ClassName $ "tile" <> (guard top " top")] <>
+          [SA.transform [SAT.Translate (toNumber pos.x) (toNumber pos.y)]] <>
+          guard (itemType `elem` selectable) [HE.onMouseDown $ \e -> StopPropagation (ME.toEvent e) $ Select $ Just {itemType, itemIndex}]
+
+  childs = [SE.svg [SA.height 1.0, SA.width 1.0, SA.viewBox 0.0 0.0 tileX tileY] $ 
                   (guard high [getAssetImage timeAsset]) <>
                   [getTile' itemType time col dirs] <>
-                  (guard sel [getAssetImage selAsset])
-        ]
+                  (guard sel [getAssetImage selAsset])]
          
 
 -- Get the tile including collisions
