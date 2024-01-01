@@ -82,8 +82,9 @@ component =
     }
 
 initialState :: forall i. i -> UI
-initialState _ = {initUniv: univ0, stepItem: 0, selItem: Nothing, config: {showSols: false, showWrongTrajs: false}, mode : AddMode}
+initialState _ = {initUniv: univ0, stepItem: 0, selItem: Nothing, config: {showSols: false, showWrongTrajs: false}}
 
+-- Render the full UI
 render :: forall w. UI -> HH.HTML w Action
 render ui =
     HH.div []
@@ -96,13 +97,13 @@ render ui =
         blocks = getValidSTBlocks $ ui.initUniv
 
 
-           
+-- Draw a single block
 drawBlock :: forall w. Maybe Time -> Maybe SelItem -> STBlock -> HH.HTML w Action
-drawBlock mt sel block = HH.div [] $ singleton $ 
+drawBlock mt sel block = HH.div [HP.class_ (ClassName "solution"), HP.id "solution" ] $ singleton $ 
   SE.svg [SA.height 432.0, SA.width 432.0, SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y)
-          , HE.onMouseDown $ \e -> StopPropagation (ME.toEvent e) $ Create $ getPos e
-          , HE.onMouseMove $ \e -> StopPropagation (ME.toEvent e) $ mouseMove e
-          ]
+         , HE.onMouseDown $ \e -> StopPropagation (ME.toEvent e) $ Create $ getPos e
+         , HE.onMouseMove $ \e -> StopPropagation (ME.toEvent e) $ mouseMove e
+         ]
          [
            SE.image [SA.x 0.0, SA.y 0.0, SA.width 11.0, SA.height 11.0, SA.href "assets/univ_background.svg"],
            drawItemMap (getItemMap block mt sel) lims
@@ -128,6 +129,7 @@ lims :: Limits
 lims = {first: {x: 0, y: 0}, last: {x: 11, y: 11}}
 
 
+-- Get the various items in Univ 
 getItemMap :: STBlock -> Maybe Time -> Maybe SelItem -> ItemMap
 getItemMap stb mt sel = selectTopTile mt $ getItemMap' stb mt sel
 
@@ -137,7 +139,9 @@ getItemMap' {univ : {portals, emitters, consumers}, walkers : walkers} mt sel =
   (getEmitterItems emitters mt sel) <> 
   (getPortalItems portals mt sel) <> 
   (getWalkerItems walkers mt)
-  
+
+
+--Get specific items  
 getEmitterItems :: Array Source -> Maybe Time -> Maybe SelItem -> Array Item
 getEmitterItems emitters mt sel = zipWith getE emitters (0..10) where
   getE exit i = {itemType : Exit, 
@@ -169,7 +173,8 @@ getPortalItems portals mt sel = concat $ zipWith getP portals (0..10) where
                            high : false, 
                            col : (toColor $ i+1), 
                            sel : sel == Just {itemType: EntryPortal, itemIndex: i}, 
-                           top : true}]
+                           top : true}
+                          ]
 
 getWalkerItems :: Array Walker -> Maybe Time -> Array Item
 getWalkerItems walkers mt = map getW wsGroups where
@@ -203,22 +208,16 @@ selectTopTile mt is = map (\i -> i {top = isTop i}) is where
 
 
 
--- * Events
+-- *** Events ***
+
+
 handleAction :: forall output m. MonadAff m => Action -> H.HalogenM UI Action () output m Unit
 handleAction a = case a of
   Initialize -> do
     _ <- H.subscribe =<< timer Tick
     document <- H.liftEffect $ Web.document =<< Web.window
-    H.subscribe' \sid ->
-      eventListener
-        KET.keyup
-        (HTMLDocument.toEventTarget document)
-        keyEvent
-    H.subscribe' \sid ->
-      eventListener
-        WET.wheel
-        (HTMLDocument.toEventTarget document)
-        wheelEvent
+    H.subscribe' \_ -> eventListener KET.keyup (HTMLDocument.toEventTarget document) keyEvent
+    H.subscribe' \_ -> eventListener WET.wheel (HTMLDocument.toEventTarget document) wheelEvent
     pure unit
   Select se ->            trace ("Select" <> show se) \_ -> H.modify_ \ui -> ui {selItem = se}
   Tick ->                 H.modify_ \ui -> ui {stepItem = (ui.stepItem + 1) `mod` 10}
@@ -227,7 +226,6 @@ handleAction a = case a of
      liftEffect $ E.preventDefault e
      liftEffect $ E.stopPropagation e
      handleAction cont
-  Mode m        -> H.modify_ $ mode m
   Rotate            ->  H.modify_ $ updateUI $ \ptd -> ptd {dir = turnRel Right_ ptd.dir}
   ChangeTime isPlus ->  H.modify_ $ updateUI $ \ptd -> ptd {time =  if isPlus then ptd.time + 1 else ptd.time - 1}
   Delete        -> H.modify_ $ delItem 
@@ -237,8 +235,6 @@ handleAction a = case a of
 
 keyEvent :: E.Event -> Maybe Action
 keyEvent e = case (spy "key: " $ KE.key <$> KE.fromEvent e) of
-  Just "a"     -> Just $ Mode AddMode
-  Just "s"     -> Just $ Mode SelectMode
   Just "r"     -> Just $ Rotate
   Just "+"     -> Just $ ChangeTime true
   Just "-"     -> Just $ ChangeTime false
@@ -251,15 +247,10 @@ keyEvent e = case (spy "key: " $ KE.key <$> KE.fromEvent e) of
 
 wheelEvent :: E.Event -> Maybe Action
 wheelEvent e = case (spy "key: " $ WE.deltaY <$> WE.fromEvent e) of
-  Just w | w > 0.0 -> Just $ ChangeTime true
-  Just w | w < 0.0 -> Just $ ChangeTime false
+  Just w | w > 0.0 -> Just $ StopPropagation e $ ChangeTime true
+  Just w | w < 0.0 -> Just $ StopPropagation e $ ChangeTime false
   _            -> Nothing
  
-
-mode :: Mode -> UI -> UI
---Go to add mode creates a dummy portal
-mode AddMode ui = ui {mode = AddMode}
-mode SelectMode ui = ui {mode = SelectMode}
 
 createPortal :: Pos -> UI -> UI
 createPortal p ui = ui {selItem = Just {itemType: ExitPortal, itemIndex: length ui.initUniv.portals}, 

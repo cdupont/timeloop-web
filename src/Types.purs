@@ -50,7 +50,6 @@ type UI = {
   initUniv :: Univ,
   stepItem :: Time,          -- A time step counter
   selItem  :: Maybe SelItem, 
-  mode :: Mode,
   config   :: Config}   
 
 _initUniv :: forall a r. Lens' { initUniv :: a | r } a
@@ -64,10 +63,7 @@ type SelItem = {
   itemType  :: ItemType,
   itemIndex :: Int}
 
-data Mode = SelectMode | AddMode
-
 data Action = Initialize
-            | Mode Mode
             | Select (Maybe SelItem)
             | Create Pos
             | Move Pos
