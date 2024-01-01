@@ -2,76 +2,52 @@
 module UI where
 
 import Prelude
-import TimeLoop.Types
-import TimeLoop.Search
-import TimeLoop.Walker
 import Tile
-import Effect.Aff.Class (class MonadAff)
-import Effect.Class (liftEffect)
 import Halogen as H
-import Halogen.Aff as HA
 import Halogen.HTML as HH 
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.VDom.Driver (runUI)
-import Halogen.Hooks (Hook, UseEffect)
-import Halogen.Hooks as Hooks
-import Data.Newtype (class Newtype)
-import Data.Maybe
-import Data.Map as M
-import Data.Tuple (Tuple(..))
-import Data.Array hiding (union)
-import Data.Int
-import Data.Traversable (sequence, traverse_)
-import Graphics.Canvas (rect, fillPath, setFillStyle, getContext2D,
-                        getCanvasElementById, Context2D, fillRect)
-
 import Halogen.Svg.Attributes as SA
 import Halogen.Svg.Elements as SE
-import Halogen.Svg.Attributes.Transform as SAT
-import Halogen.HTML.Events as HE
-import Record hiding (set)
-import Debug
-import Web.HTML.Common
-import Effect.Console (logShow)
-import Effect.Class (class MonadEffect)
-import Undefined
-import Data.Array.Partial as AP
-import Data.Foldable as F
-import Data.Function
-import Data.Array.NonEmpty as AN
-import Data.Profunctor.Strong
-import Data.Eq
-import Data.Ord
-import Data.Array.NonEmpty as ANE
-import Data.NonEmpty as NE
-import Partial.Unsafe
 import Halogen.Subscription as HS
-import Effect.Aff (Milliseconds(..))
-import Effect.Aff as Aff
-import Effect.Aff.Class (class MonadAff)
-import Control.Monad.Rec.Class (forever)
-import Data.EuclideanRing
-import Types
-import Data.Lens
-import Data.Lens.Index
-import Web.UIEvent.KeyboardEvent
+import Halogen.Query.Event (eventListener)
+
 import Web.HTML (window) as Web
 import Web.HTML.HTMLDocument as HTMLDocument
 import Web.HTML.Window (document) as Web
-import Web.UIEvent.KeyboardEvent (KeyboardEvent)
+import Web.HTML.Common (ClassName(..))
 import Web.UIEvent.KeyboardEvent as KE
 import Web.UIEvent.KeyboardEvent.EventTypes as KET
 import Web.UIEvent.WheelEvent.EventTypes as WET
 import Web.UIEvent.WheelEvent as WE
-
-import Halogen.Query.Event (eventListener)
-import Web.Event.Event as E
 import Web.UIEvent.MouseEvent as ME
+import Web.Event.Event as E
 import Web.CSSOM.MouseEvent as CSSME
+
+import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Array hiding (union)
+import Data.Int (floor, toNumber)
+import Data.Foldable as F
+import Data.Function (on)
+import Data.Profunctor.Strong ((&&&))
+import Data.Array.NonEmpty as ANE
+import Data.Lens (over)
+import Data.Lens.Index (ix)
+import Effect.Class (liftEffect)
+import Effect.Aff as Aff
+import Effect.Aff.Class (class MonadAff)
+import Control.Monad.Rec.Class (forever)
+import Debug (spy, trace) 
+import Undefined (undefined)
+
+import TimeLoop.Types
+import TimeLoop.Search
+import TimeLoop.Walker 
+import Types
 
 -- * Main app
 
+component :: forall query input output m. MonadAff m => H.Component query input output m 
 component =
   H.mkComponent
     { initialState
@@ -135,7 +111,7 @@ getItemMap stb mt sel = selectTopTile mt $ getItemMap' stb mt sel
 
 -- Get the various items in Univ 
 getItemMap' :: STBlock -> Maybe Time -> Maybe SelItem -> Array Item 
-getItemMap' {univ : {portals, emitters, consumers}, walkers : walkers} mt sel = 
+getItemMap' {univ : {portals, emitters}, walkers : walkers} mt sel = 
   (getEmitterItems emitters mt sel) <> 
   (getPortalItems portals mt sel) <> 
   (getWalkerItems walkers mt)
@@ -261,14 +237,14 @@ timer :: forall m a. MonadAff m => a -> m (HS.Emitter a)
 timer val = do
   { emitter, listener } <- H.liftEffect HS.create
   _ <- H.liftAff $ Aff.forkAff $ forever do
-    Aff.delay $ Milliseconds 1000.0
+    Aff.delay $ Aff.Milliseconds 1000.0
     H.liftEffect $ HS.notify listener val
   pure emitter
 
 
 updateUI :: (PTD -> PTD) -> UI -> UI
 updateUI f ui = case ui.selItem of
-  Just sel -> trace "updating" \_ -> updateUI' sel f ui
+  Just sel -> updateUI' sel f ui
   Nothing -> ui 
 
 updateUI' :: SelItem -> (PTD -> PTD) -> UI -> UI
@@ -280,7 +256,7 @@ updateUI' _ _ = undefined
 
 delItem :: UI -> UI
 delItem ui = case ui.selItem of
-  Just sel -> trace "deleting" \_ -> delItem' sel ui 
+  Just sel -> delItem' sel ui 
   Nothing -> ui 
 
 delItem' :: SelItem -> UI -> UI
