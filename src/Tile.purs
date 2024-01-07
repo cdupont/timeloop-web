@@ -17,8 +17,8 @@ import Types
 import Data.Int (toNumber)
 import Web.UIEvent.MouseEvent as ME
 
-tileX = 36.0
-tileY = 36.0
+tileX = 72.0
+tileY = 72.0
 
 toColor :: Int -> Color
 toColor 1 = Red

@@ -50,7 +50,8 @@ type UI = {
   initUniv :: Univ,
   stepItem :: Time,          -- A time step counter
   selItem  :: Maybe SelItem, 
-  config   :: Config}   
+  config   :: Config,
+  active   :: Int}   
 
 _initUniv :: forall a r. Lens' { initUniv :: a | r } a
 _initUniv = prop (Proxy :: Proxy "initUniv")
@@ -64,6 +65,7 @@ type SelItem = {
   itemIndex :: Int}
 
 data Action = Initialize
+            | SelectSol Int
             | Select (Maybe SelItem)
             | Create Pos
             | Move Pos

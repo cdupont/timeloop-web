@@ -33,6 +33,7 @@ import Data.Profunctor.Strong ((&&&))
 import Data.Array.NonEmpty as ANE
 import Data.Lens (over)
 import Data.Lens.Index (ix)
+import Data.Enum (upFrom)
 import Effect.Class (liftEffect)
 import Effect.Aff as Aff
 import Effect.Aff.Class (class MonadAff)
@@ -58,32 +59,50 @@ component =
     }
 
 initialState :: forall i. i -> UI
-initialState _ = {initUniv: univ0, stepItem: 0, selItem: Nothing, config: {showSols: false, showWrongTrajs: false}}
+initialState _ = {initUniv: univ0, stepItem: 0, selItem: Nothing, config: {showSols: false, showWrongTrajs: false}, active: 1}
 
 -- Render the full UI
 render :: forall w. UI -> HH.HTML w Action
 render ui =
-    HH.div []
+    HH.div [HP.class_ (ClassName "game")] 
       [ 
         HH.div [HP.class_ (ClassName "solutions")] 
                (if length blocks == 0 
-                then [drawBlock Nothing ui.selItem {univ: ui.initUniv, walkers: []}]
-                else map (drawBlock (Just ui.stepItem) ui.selItem) blocks)
+                then [HH.text "No solutions"]
+                else zipWith (\b i -> drawBlock (Just ui.stepItem) ui.selItem (i == ui.active) b i) blocks (1..10)),
+        HH.div [HP.class_ (ClassName "play")] 
+               (case blocks!!(ui.active-1) of
+                  Nothing -> [drawBlock Nothing ui.selItem true {univ: ui.initUniv, walkers: []} 0]
+                  Just b ->  [drawBlock (Just ui.stepItem) ui.selItem true b ui.active])
       ] where
         blocks = getValidSTBlocks $ ui.initUniv
 
 
--- Draw a single block
-drawBlock :: forall w. Maybe Time -> Maybe SelItem -> STBlock -> HH.HTML w Action
-drawBlock mt sel block = HH.div [HP.class_ (ClassName "solution"), HP.id "solution" ] $ singleton $ 
-  SE.svg [SA.height 432.0, SA.width 432.0, SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y)
-         , HE.onMouseDown $ \e -> StopPropagation (ME.toEvent e) $ Create $ getPos e
-         , HE.onMouseMove $ \e -> StopPropagation (ME.toEvent e) $ mouseMove e
+-- Draw a single universe block.
+drawBlock :: forall w. Maybe Time    -- A stepper time, allowing to highlight items
+                    -> Maybe SelItem -- Item currently selected
+                    -> Boolean       -- Universe is active
+                    -> STBlock       -- the universe block to display
+                    -> Int           -- universe index
+                    -> HH.HTML w Action
+drawBlock mt sel active block i = 
+  HH.div [HP.class_ (ClassName $ "solution" <> (if active then " active" else "")), 
+          HP.id (solId i)]
+         [ SE.svg [SA.height 864.0,
+                   SA.width 864.0, 
+                   SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y), 
+                   HE.onMouseDown $ \e -> StopPropagation (ME.toEvent e) $ if active then Create (getPos e) else SelectSol i,
+                   HE.onMouseMove $ \e -> StopPropagation (ME.toEvent e) $ mouseMove $ spy "Mouse" e
+                  ]
+                  [
+                    SE.image [SA.x 0.0, SA.y 0.0, SA.width 11.0, SA.height 11.0, SA.href "assets/univ_background.svg"],
+                    drawItemMap (getItemMap block mt sel) lims
+                  ]
          ]
-         [
-           SE.image [SA.x 0.0, SA.y 0.0, SA.width 11.0, SA.height 11.0, SA.href "assets/univ_background.svg"],
-           drawItemMap (getItemMap block mt sel) lims
-         ]
+
+solId :: Int -> String
+solId 0 = "init_univ"
+solId i = "solution" <> (show i)
 
 mouseMove :: ME.MouseEvent -> Action
 mouseMove me = 
@@ -195,6 +214,7 @@ handleAction a = case a of
     H.subscribe' \_ -> eventListener KET.keyup (HTMLDocument.toEventTarget document) keyEvent
     H.subscribe' \_ -> eventListener WET.wheel (HTMLDocument.toEventTarget document) wheelEvent
     pure unit
+  SelectSol i ->          trace ("Selectsol" <> show i) \_ -> H.modify_ \ui -> ui {active = i}
   Select se ->            trace ("Select" <> show se) \_ -> H.modify_ \ui -> ui {selItem = se}
   Tick ->                 H.modify_ \ui -> ui {stepItem = (ui.stepItem + 1) `mod` 10}
   Noop ->                 pure unit

@@ -2,10 +2,26 @@
   display: flex;
 }
 
+.game {
+  display: flex;
+}
+
 .solutions {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 20px;
 }
+
+.solutions .solution svg{
+  height: 400px;
+  width: 400px;
+}
+
+.play {
+
+
+}
+
 
 .red {
   filter: invert(16%) sepia(99%) saturate(7453%) hue-rotate(1deg) brightness(105%) contrast(112%);
