@@ -69,29 +69,31 @@ render ui =
         HH.div [HP.class_ (ClassName "solutions")] 
                (if length blocks == 0 
                 then [HH.text "No solutions"]
-                else zipWith (\b i -> drawBlock (Just ui.stepItem) ui.selItem (i == ui.active) b i) blocks (1..10)),
+                else zipWith (\b i -> drawBlock (Just ui.stepItem) ui.selItem (i == ui.active) false b i) blocks (1..10)),
         HH.div [HP.class_ (ClassName "play")] 
                (case blocks!!(ui.active-1) of
-                  Nothing -> [drawBlock Nothing ui.selItem true {univ: ui.initUniv, walkers: []} 0]
-                  Just b ->  [drawBlock (Just ui.stepItem) ui.selItem true b ui.active])
+                  Nothing -> [drawBlock Nothing            ui.selItem false true init_univ 0]
+                  Just b ->  [drawBlock (Just ui.stepItem) ui.selItem false true b ui.active])
       ] where
         blocks = getValidSTBlocks $ ui.initUniv
+        init_univ = {univ: ui.initUniv, walkers: []}
 
 
 -- Draw a single universe block.
 drawBlock :: forall w. Maybe Time    -- A stepper time, allowing to highlight items
                     -> Maybe SelItem -- Item currently selected
                     -> Boolean       -- Universe is active
+                    -> Boolean       -- Universe is playable
                     -> STBlock       -- the universe block to display
                     -> Int           -- universe index
                     -> HH.HTML w Action
-drawBlock mt sel active block i = 
+drawBlock mt sel active play block i = 
   HH.div [HP.class_ (ClassName $ "solution" <> (if active then " active" else "")), 
           HP.id (solId i)]
          [ SE.svg [SA.height 864.0,
                    SA.width 864.0, 
                    SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y), 
-                   HE.onMouseDown $ \e -> StopPropagation (ME.toEvent e) $ if active then Create (getPos e) else SelectSol i,
+                   HE.onMouseDown $ \e -> StopPropagation (ME.toEvent e) $ if play then Create (getPos e) else SelectSol i,
                    HE.onMouseMove $ \e -> StopPropagation (ME.toEvent e) $ mouseMove $ spy "Mouse" e
                   ]
                   [
