@@ -10,16 +10,34 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  margin: 20px;
+  border-color: red;
+}
+
+.solutions .solution {
+  border-style: solid;
+}
+
+.solutions .solution.active {
+  border-style: dashed;
+}
+
+.solutions .solution.valid {
+  border-color: green;
+}
+
+.solutions .solution.invalid {
+  border-color: red;
 }
 
 .solutions .solution svg{
-  height: 400px;
-  width: 400px;
+  height: 200px;
+  width: 200px;
 }
 
 .play {
-
-
+  padding: 20px;
+  border-style: solid;
 }
 
 

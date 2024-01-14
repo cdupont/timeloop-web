@@ -75,5 +75,6 @@ data Action = Initialize
             | ChangeTime Boolean
             | StopPropagation Event Action
             | Tick
+            | ShowWrongTraj
             | Noop
 

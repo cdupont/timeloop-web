@@ -69,13 +69,13 @@ render ui =
         HH.div [HP.class_ (ClassName "solutions")] 
                (if length blocks == 0 
                 then [HH.text "No solutions"]
-                else zipWith (\b i -> drawBlock (Just ui.stepItem) ui.selItem (i == ui.active) false b i) blocks (1..10)),
+                else zipWith (\b i -> drawBlock (Just ui.stepItem) ui.selItem (i == ui.active) false (isValidBlock b) b i) blocks (1..10)),
         HH.div [HP.class_ (ClassName "play")] 
-               (case blocks!!(ui.active-1) of
-                  Nothing -> [drawBlock Nothing            ui.selItem false true init_univ 0]
-                  Just b ->  [drawBlock (Just ui.stepItem) ui.selItem false true b ui.active])
+               (case blocks !! (ui.active-1) of
+                  Nothing -> [drawBlock Nothing            ui.selItem false true true init_univ 0]
+                  Just b ->  [drawBlock (Just ui.stepItem) ui.selItem false true true b         ui.active])
       ] where
-        blocks = getValidSTBlocks $ ui.initUniv
+        blocks = getAllSTBlocks $ ui.initUniv
         init_univ = {univ: ui.initUniv, walkers: []}
 
 
@@ -84,11 +84,12 @@ drawBlock :: forall w. Maybe Time    -- A stepper time, allowing to highlight it
                     -> Maybe SelItem -- Item currently selected
                     -> Boolean       -- Universe is active
                     -> Boolean       -- Universe is playable
+                    -> Boolean
                     -> STBlock       -- the universe block to display
                     -> Int           -- universe index
                     -> HH.HTML w Action
-drawBlock mt sel active play block i = 
-  HH.div [HP.class_ (ClassName $ "solution" <> (if active then " active" else "")), 
+drawBlock mt sel active play isValid block i = 
+  HH.div [HP.class_ (ClassName $ "solution" <> (if active then " active" else "") <> (if isValid then " valid" else " invalid")), 
           HP.id (solId i)]
          [ SE.svg [SA.height 864.0,
                    SA.width 864.0, 
@@ -97,7 +98,7 @@ drawBlock mt sel active play block i =
                    HE.onMouseMove $ \e -> StopPropagation (ME.toEvent e) $ mouseMove $ spy "Mouse" e
                   ]
                   [
-                    SE.image [SA.x 0.0, SA.y 0.0, SA.width 11.0, SA.height 11.0, SA.href "assets/univ_background.svg"],
+--                    SE.image [SA.x 0.0, SA.y 0.0, SA.width 11.0, SA.height 11.0, SA.href "assets/univ_background.svg"],
                     drawItemMap (getItemMap block mt sel) lims
                   ]
          ]
@@ -230,6 +231,7 @@ handleAction a = case a of
   Create      p -> H.modify_ $ createPortal p 
   Move        p -> H.modify_ $ updateUI $ \ptd -> ptd {pos = p} 
   MoveRel     d -> H.modify_ $ updateUI $ \ptd -> ptd {pos = simpleMove' d ptd.pos} 
+  ShowWrongTraj -> H.modify_ \ui -> ui {config {showWrongTrajs = not ui.config.showWrongTrajs}}
 
 keyEvent :: E.Event -> Maybe Action
 keyEvent e = case (spy "key: " $ KE.key <$> KE.fromEvent e) of
@@ -237,10 +239,13 @@ keyEvent e = case (spy "key: " $ KE.key <$> KE.fromEvent e) of
   Just "+"     -> Just $ ChangeTime true
   Just "-"     -> Just $ ChangeTime false
   Just "d"     -> Just $ Delete
+  Just "Delete"     -> Just $ Delete
+  Just "Backspace"  -> Just $ Delete
   Just "ArrowRight" -> Just $ MoveRel E 
   Just "ArrowLeft"  -> Just $ MoveRel W
   Just "ArrowUp"    -> Just $ MoveRel N 
   Just "ArrowDown"  -> Just $ MoveRel S 
+  Just "w"          -> Just $ ShowWrongTraj 
   _            -> Nothing
 
 wheelEvent :: E.Event -> Maybe Action
