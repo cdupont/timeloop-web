@@ -67,9 +67,8 @@ render ui =
     HH.div [HP.class_ (ClassName "game")] 
       [ 
         HH.div [HP.class_ (ClassName "solutions")] 
-               (if length blocks == 0 
-                then [HH.text "No solutions"]
-                else zipWith (\b i -> drawBlock (Just ui.stepItem) ui.selItem (i == ui.active) false (isValidBlock b) b i) blocks (1..10)),
+               ([HH.text msg] <>
+               zipWith (\b i -> drawBlock (Just ui.stepItem) ui.selItem (i == ui.active) false (isValidBlock b) b i) blocks (1..10)),
         HH.div [HP.class_ (ClassName "play")] 
                (case blocks !! (ui.active-1) of
                   Nothing -> [drawBlock Nothing            ui.selItem false true true init_univ 0]
@@ -77,6 +76,7 @@ render ui =
       ] where
         blocks = getAllSTBlocks $ ui.initUniv
         init_univ = {univ: ui.initUniv, walkers: []}
+        msg = if length blocks == 0 then "No Solutions" else (show $ length blocks) <> " Solution(s):" 
 
 
 -- Draw a single universe block.
