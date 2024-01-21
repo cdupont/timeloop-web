@@ -87,6 +87,8 @@ _emitters = prop (Proxy :: Proxy "emitters")
 _consumers :: forall a r. Lens' { consumers :: a | r } a
 _consumers = prop (Proxy :: Proxy "consumers")
 
+data UObject = Portal | Source | Sink
+
 -- A STBlock is infinite and flat spacetime block universe.
 -- It contains some "Walkers" which are particules that moves in a straight line.
 type STBlock = {

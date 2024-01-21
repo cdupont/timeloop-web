@@ -29,6 +29,8 @@ selectable = [EntryPortal, ExitPortal, Entry, Exit]
 
 data Color = Black | Red | Blue
 
+data Mode = MSel | MCreate UObject 
+
 derive instance Generic Color _
 instance j ∷ Show Color where
    show = genericShow 
@@ -51,6 +53,7 @@ type UI = {
   stepItem :: Time,          -- A time step counter
   selItem  :: Maybe SelItem, 
   config   :: Config,
+  mode     :: Mode,
   active   :: Int}   
 
 _initUniv :: forall a r. Lens' { initUniv :: a | r } a
@@ -67,7 +70,7 @@ type SelItem = {
 data Action = Initialize
             | SelectSol Int
             | Select (Maybe SelItem)
-            | Create Pos
+            | Create UObject Pos
             | Move Pos
             | MoveRel Dir
             | Delete

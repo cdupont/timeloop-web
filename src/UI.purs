@@ -59,49 +59,83 @@ component =
     }
 
 initialState :: forall i. i -> UI
-initialState _ = {initUniv: univ0, stepItem: 0, selItem: Nothing, config: {showSols: false, showWrongTrajs: false}, active: 1}
+initialState _ = {initUniv: univ0, stepItem: 0, selItem: Nothing, config: {showSols: false, showWrongTrajs: false}, active: 1, mode: MSel}
 
 -- Render the full UI
 render :: forall w. UI -> HH.HTML w Action
 render ui =
-    HH.div [HP.class_ (ClassName "game")] 
-      [ 
-        HH.div [HP.class_ (ClassName "solutions")] 
-               ([HH.text msg] <>
-               zipWith (\b i -> drawBlock (Just ui.stepItem) ui.selItem (i == ui.active) false (isValidBlock b) b i) blocks (1..10)),
-        HH.div [HP.class_ (ClassName "play")] 
-               (case blocks !! (ui.active-1) of
-                  Nothing -> [drawBlock Nothing            ui.selItem false true true init_univ 0]
-                  Just b ->  [drawBlock (Just ui.stepItem) ui.selItem false true true b         ui.active])
-      ] where
+  HH.div 
+    [ HP.class_ (ClassName "game") ] 
+    [ HH.div 
+        [ HP.class_ (ClassName "solutions") ] 
+        ( cons 
+            ( HH.text msg )
+            ( zipWith (\b i -> drawBlock (Just ui.stepItem) ui.selItem (i == ui.active) false (isValidBlock b) ui.mode b i) blocks (1..10) ) 
+        ),
+      HH.div 
+        [ HP.class_ (ClassName "play") ] 
+        [ case blocks !! (ui.active-1) of
+            Nothing -> drawBlock Nothing            ui.selItem false true true ui.mode init_univ 0
+            Just b ->  drawBlock (Just ui.stepItem) ui.selItem false true true ui.mode b         ui.active
+        ],
+      legend
+    ] 
+  where
         blocks = getAllSTBlocks $ ui.initUniv
         init_univ = {univ: ui.initUniv, walkers: []}
         msg = if length blocks == 0 then "No Solutions" else (show $ length blocks) <> " Solution(s):" 
 
+legend :: forall w. HH.HTML w Action
+legend = 
+  HH.div 
+    [ HP.class_ (ClassName "setup") ]
+    [ HH.text "Mode: ",
+      HH.select 
+        []
+        [ HH.option 
+            [ HP.value "select" ]
+            [ HH.text "Select" ],
+          HH.option 
+            [ HP.value "createPortal" ]
+            [ HH.text "Create Portal" ],
+          HH.option 
+            [ HP.value "createEmitter" ]
+            [ HH.text "Create Emitter" ],
+          HH.option 
+            [ HP.value "createConsumer" ]
+            [ HH.text "Create Consumer" ]
+       ]
+    ]
 
 -- Draw a single universe block.
 drawBlock :: forall w. Maybe Time    -- A stepper time, allowing to highlight items
                     -> Maybe SelItem -- Item currently selected
                     -> Boolean       -- Universe is active
                     -> Boolean       -- Universe is playable
-                    -> Boolean
+                    -> Boolean       -- Universe is valid
+                    -> Mode          -- Create or select
                     -> STBlock       -- the universe block to display
                     -> Int           -- universe index
                     -> HH.HTML w Action
-drawBlock mt sel active play isValid block i = 
+drawBlock mt sel active play isValid mode block i = 
   HH.div [HP.class_ (ClassName $ "solution" <> (if active then " active" else "") <> (if isValid then " valid" else " invalid")), 
           HP.id (solId i)]
          [ SE.svg [SA.height 864.0,
                    SA.width 864.0, 
                    SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y), 
-                   HE.onMouseDown $ \e -> StopPropagation (ME.toEvent e) $ if play then Create (getPos e) else SelectSol i,
+                   HE.onMouseDown $ \e -> StopPropagation (ME.toEvent e) $ click e,
                    HE.onMouseMove $ \e -> StopPropagation (ME.toEvent e) $ mouseMove $ spy "Mouse" e
                   ]
                   [
 --                    SE.image [SA.x 0.0, SA.y 0.0, SA.width 11.0, SA.height 11.0, SA.href "assets/univ_background.svg"],
                     drawItemMap (getItemMap block mt sel) lims
                   ]
-         ]
+         ] where
+           click e = if play
+                then case mode of 
+                         MSel -> Noop
+                         MCreate p -> Create p (getPos e)
+                else SelectSol i
 
 solId :: Int -> String
 solId 0 = "init_univ"
@@ -228,7 +262,9 @@ handleAction a = case a of
   Rotate            ->  H.modify_ $ updateUI $ \ptd -> ptd {dir = turnRel Right_ ptd.dir}
   ChangeTime isPlus ->  H.modify_ $ updateUI $ \ptd -> ptd {time =  if isPlus then ptd.time + 1 else ptd.time - 1}
   Delete        -> H.modify_ $ delItem 
-  Create      p -> H.modify_ $ createPortal p 
+  Create      Source p    -> H.modify_ $ createPortal p 
+  Create      Sink p    -> H.modify_ $ createPortal p 
+  Create      Portal p -> H.modify_ $ createPortal p 
   Move        p -> H.modify_ $ updateUI $ \ptd -> ptd {pos = p} 
   MoveRel     d -> H.modify_ $ updateUI $ \ptd -> ptd {pos = simpleMove' d ptd.pos} 
   ShowWrongTraj -> H.modify_ \ui -> ui {config {showWrongTrajs = not ui.config.showWrongTrajs}}
