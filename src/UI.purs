@@ -89,22 +89,32 @@ legend :: forall w. HH.HTML w Action
 legend = 
   HH.div 
     [ HP.class_ (ClassName "setup") ]
-    [ HH.text "Mode: ",
-      HH.select 
-        [ HE.onValueChange $ \e -> getModeAction e]
-        [ HH.option 
-            [ HP.value "select" ]
-            [ HH.text "Select" ],
-          HH.option 
-            [ HP.value "createPortal" ]
-            [ HH.text "Create Portal" ],
-          HH.option 
-            [ HP.value "createEmitter" ]
-            [ HH.text "Create Emitter" ],
-          HH.option 
-            [ HP.value "createConsumer" ]
-            [ HH.text "Create Consumer" ]
-       ]
+    [ HH.p 
+        [] 
+        [HH.text "Setup"],
+      HH.p
+        []
+        [HH.text "Mode: ",
+         HH.select 
+           [ HE.onValueChange $ \e -> getModeAction e]
+           [ HH.option 
+               [ HP.value "select" ]
+               [ HH.text "Select" ],
+             HH.option 
+               [ HP.value "createPortal" ]
+               [ HH.text "Create Portal" ],
+             HH.option 
+               [ HP.value "createEmitter" ]
+               [ HH.text "Create Emitter" ],
+             HH.option 
+               [ HP.value "createConsumer" ]
+               [ HH.text "Create Consumer" ]
+          ]
+        ],
+      HH.p 
+        [] 
+        [ HH.text "Create time portals by clicking and dragging."]
+       
     ]
 
 getModeAction :: String -> Action
