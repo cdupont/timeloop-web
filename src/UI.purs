@@ -81,9 +81,9 @@ render ui =
       legend
     ] 
   where
-        blocks = getAllSTBlocks $ ui.initUniv
-        init_univ = {univ: ui.initUniv, walkers: []}
-        msg = if length blocks == 0 then "No Solutions" else (show $ length blocks) <> " Solution(s):" 
+    blocks = getAllSTBlocks $ ui.initUniv
+    init_univ = {univ: ui.initUniv, walkers: []}
+    msg = if length blocks == 0 then "No Solutions" else (show $ length blocks) <> " Solution(s):" 
 
 legend :: forall w. HH.HTML w Action
 legend = 
@@ -91,7 +91,7 @@ legend =
     [ HP.class_ (ClassName "setup") ]
     [ HH.text "Mode: ",
       HH.select 
-        []
+        [ HE.onValueChange $ \e -> getModeAction e]
         [ HH.option 
             [ HP.value "select" ]
             [ HH.text "Select" ],
@@ -106,6 +106,13 @@ legend =
             [ HH.text "Create Consumer" ]
        ]
     ]
+
+getModeAction :: String -> Action
+getModeAction "select" = Mode MSel
+getModeAction "createPortal" = Mode (MCreate Portal)
+getModeAction "createEmitter" = Mode (MCreate Source)
+getModeAction "createConsumer" = Mode (MCreate Sink)
+getModeAction _ = Noop
 
 -- Draw a single universe block.
 drawBlock :: forall w. Maybe Time    -- A stepper time, allowing to highlight items
@@ -268,6 +275,7 @@ handleAction a = case a of
   Move        p -> H.modify_ $ updateUI $ \ptd -> ptd {pos = p} 
   MoveRel     d -> H.modify_ $ updateUI $ \ptd -> ptd {pos = simpleMove' d ptd.pos} 
   ShowWrongTraj -> H.modify_ \ui -> ui {config {showWrongTrajs = not ui.config.showWrongTrajs}}
+  Mode m        -> H.modify_ \ui -> ui {mode = m}
 
 keyEvent :: E.Event -> Maybe Action
 keyEvent e = case (spy "key: " $ KE.key <$> KE.fromEvent e) of

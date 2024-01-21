@@ -79,5 +79,6 @@ data Action = Initialize
             | StopPropagation Event Action
             | Tick
             | ShowWrongTraj
+            | Mode Mode
             | Noop
 

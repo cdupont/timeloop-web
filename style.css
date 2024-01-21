@@ -35,11 +35,15 @@
   width: 200px;
 }
 
-.play {
+.play .solution {
   padding: 20px;
   border-style: solid;
 }
 
+.setup {
+  margin: 20px;
+
+}
 
 .red {
   filter: invert(16%) sepia(99%) saturate(7453%) hue-rotate(1deg) brightness(105%) contrast(112%);
