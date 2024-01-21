@@ -10,7 +10,7 @@ import Halogen.Svg.Attributes as SA
 import Halogen.Svg.Attributes.Transform as SAT
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
-import Data.Array (elem, fromFoldable) 
+import Data.Array (elem, fromFoldable, (:)) 
 import Data.Maybe
 import Data.Monoid (guard)
 import Types
@@ -54,16 +54,23 @@ selAsset = "assets/sel.svg"
 
 -- Get the tile with position, events and highlight
 getTile :: forall w. Item -> HTML w Action 
-getTile {itemType, itemIndex, pos, dirs, time, high, col, sel, top} = SE.g attrs childs where
-
-  attrs = [SA.class_ $ ClassName $ "tile" <> (guard top " top")] <>
-          [SA.transform [SAT.Translate (toNumber pos.x) (toNumber pos.y)]] <>
-          guard (itemType `elem` selectable) [HE.onMouseDown $ \e -> StopPropagation (ME.toEvent e) $ Select $ Just {itemType, itemIndex}]
-
-  childs = [SE.svg [SA.height 1.0, SA.width 1.0, SA.viewBox 0.0 0.0 tileX tileY] $ 
-                  (guard high [getAssetImage timeAsset]) <>
-                  [getTile' itemType time col dirs] <>
-                  (guard sel [getAssetImage selAsset])]
+getTile {itemType, itemIndex, pos, dirs, time, high, col, sel, top} = 
+  SE.g 
+    ( (SA.class_ $ ClassName $ "tile" <> (guard top " top")) :
+      SA.transform [SAT.Translate (toNumber pos.x) (toNumber pos.y)] :
+      guard (itemType `elem` selectable) [HE.onMouseDown $ \e -> StopPropagation (ME.toEvent e) $ Select $ Just {itemType, itemIndex}]
+    )
+    [ SE.svg 
+        [ SA.height 1.0, 
+          SA.width 1.0, 
+          SA.viewBox 0.0 0.0 tileX tileY
+        ]
+        ( 
+          [getTile' itemType time col dirs] <>
+          guard sel [getAssetImage selAsset] <>
+          guard high [getAssetImage timeAsset]
+        )
+    ]
          
 
 -- Get the tile including collisions
@@ -75,17 +82,22 @@ getTile' _           _ _   _   = SE.g [] []
 
 -- Get the tile with its color, time index and orientation
 getTile'' :: forall w i. String -> Color -> Maybe Time -> Maybe Dir -> HTML w i
-getTile'' imAsset col time dir = SE.g [SA.class_ $ getColorClass col] 
-                                    ([
-                                      SE.g [SA.transform [SAT.Rotate (rotateDir (fromMaybe N dir)) (tileX / 2.0) (tileY / 2.0)]]
-                                           [getAssetImage imAsset]
-                                     ] <> 
-                                     (getTime <$> fromFoldable time))
+getTile'' imAsset col time dir = 
+  SE.g 
+    [ SA.class_ $ getColorClass col ] 
+    ( ( SE.g 
+          [ SA.transform [SAT.Rotate (rotateDir (fromMaybe N dir)) (tileX / 2.0) (tileY / 2.0)] ]
+          [ getAssetImage imAsset ] ) :
+      ( getTime <$> fromFoldable time )
+    )
                                     
 
 getAssetImage :: forall w i. String -> HTML w i
 getAssetImage s = SE.image [SA.x 0.0, SA.y 0.0, SA.width tileX, SA.height tileY, SA.href s]
 
 getTime :: forall w i. Time -> HTML w i
-getTime time = SE.text [SA.x 23.0, SA.y 15.0] [HH.text (show time)]
+getTime time = 
+  SE.text 
+    [ SA.x 23.0, SA.y 15.0 ]
+    [ HH.text (show time) ]
 

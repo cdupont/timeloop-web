@@ -2681,12 +2681,12 @@
   var foldMapDefaultR = function(dictFoldable) {
     var foldr22 = foldr(dictFoldable);
     return function(dictMonoid) {
-      var append9 = append(dictMonoid.Semigroup0());
+      var append8 = append(dictMonoid.Semigroup0());
       var mempty2 = mempty(dictMonoid);
       return function(f) {
         return foldr22(function(x2) {
           return function(acc) {
-            return append9(f(x2))(acc);
+            return append8(f(x2))(acc);
           };
         })(mempty2);
       };
@@ -4583,6 +4583,253 @@
     };
   };
 
+  // output/DOM.HTML.Indexed.InputType/index.js
+  var InputButton = /* @__PURE__ */ function() {
+    function InputButton2() {
+    }
+    ;
+    InputButton2.value = new InputButton2();
+    return InputButton2;
+  }();
+  var InputCheckbox = /* @__PURE__ */ function() {
+    function InputCheckbox2() {
+    }
+    ;
+    InputCheckbox2.value = new InputCheckbox2();
+    return InputCheckbox2;
+  }();
+  var InputColor = /* @__PURE__ */ function() {
+    function InputColor2() {
+    }
+    ;
+    InputColor2.value = new InputColor2();
+    return InputColor2;
+  }();
+  var InputDate = /* @__PURE__ */ function() {
+    function InputDate2() {
+    }
+    ;
+    InputDate2.value = new InputDate2();
+    return InputDate2;
+  }();
+  var InputDatetimeLocal = /* @__PURE__ */ function() {
+    function InputDatetimeLocal2() {
+    }
+    ;
+    InputDatetimeLocal2.value = new InputDatetimeLocal2();
+    return InputDatetimeLocal2;
+  }();
+  var InputEmail = /* @__PURE__ */ function() {
+    function InputEmail2() {
+    }
+    ;
+    InputEmail2.value = new InputEmail2();
+    return InputEmail2;
+  }();
+  var InputFile = /* @__PURE__ */ function() {
+    function InputFile2() {
+    }
+    ;
+    InputFile2.value = new InputFile2();
+    return InputFile2;
+  }();
+  var InputHidden = /* @__PURE__ */ function() {
+    function InputHidden2() {
+    }
+    ;
+    InputHidden2.value = new InputHidden2();
+    return InputHidden2;
+  }();
+  var InputImage = /* @__PURE__ */ function() {
+    function InputImage2() {
+    }
+    ;
+    InputImage2.value = new InputImage2();
+    return InputImage2;
+  }();
+  var InputMonth = /* @__PURE__ */ function() {
+    function InputMonth2() {
+    }
+    ;
+    InputMonth2.value = new InputMonth2();
+    return InputMonth2;
+  }();
+  var InputNumber = /* @__PURE__ */ function() {
+    function InputNumber2() {
+    }
+    ;
+    InputNumber2.value = new InputNumber2();
+    return InputNumber2;
+  }();
+  var InputPassword = /* @__PURE__ */ function() {
+    function InputPassword2() {
+    }
+    ;
+    InputPassword2.value = new InputPassword2();
+    return InputPassword2;
+  }();
+  var InputRadio = /* @__PURE__ */ function() {
+    function InputRadio2() {
+    }
+    ;
+    InputRadio2.value = new InputRadio2();
+    return InputRadio2;
+  }();
+  var InputRange = /* @__PURE__ */ function() {
+    function InputRange2() {
+    }
+    ;
+    InputRange2.value = new InputRange2();
+    return InputRange2;
+  }();
+  var InputReset = /* @__PURE__ */ function() {
+    function InputReset2() {
+    }
+    ;
+    InputReset2.value = new InputReset2();
+    return InputReset2;
+  }();
+  var InputSearch = /* @__PURE__ */ function() {
+    function InputSearch2() {
+    }
+    ;
+    InputSearch2.value = new InputSearch2();
+    return InputSearch2;
+  }();
+  var InputSubmit = /* @__PURE__ */ function() {
+    function InputSubmit2() {
+    }
+    ;
+    InputSubmit2.value = new InputSubmit2();
+    return InputSubmit2;
+  }();
+  var InputTel = /* @__PURE__ */ function() {
+    function InputTel2() {
+    }
+    ;
+    InputTel2.value = new InputTel2();
+    return InputTel2;
+  }();
+  var InputText = /* @__PURE__ */ function() {
+    function InputText2() {
+    }
+    ;
+    InputText2.value = new InputText2();
+    return InputText2;
+  }();
+  var InputTime = /* @__PURE__ */ function() {
+    function InputTime2() {
+    }
+    ;
+    InputTime2.value = new InputTime2();
+    return InputTime2;
+  }();
+  var InputUrl = /* @__PURE__ */ function() {
+    function InputUrl2() {
+    }
+    ;
+    InputUrl2.value = new InputUrl2();
+    return InputUrl2;
+  }();
+  var InputWeek = /* @__PURE__ */ function() {
+    function InputWeek2() {
+    }
+    ;
+    InputWeek2.value = new InputWeek2();
+    return InputWeek2;
+  }();
+  var renderInputType = function(v2) {
+    if (v2 instanceof InputButton) {
+      return "button";
+    }
+    ;
+    if (v2 instanceof InputCheckbox) {
+      return "checkbox";
+    }
+    ;
+    if (v2 instanceof InputColor) {
+      return "color";
+    }
+    ;
+    if (v2 instanceof InputDate) {
+      return "date";
+    }
+    ;
+    if (v2 instanceof InputDatetimeLocal) {
+      return "datetime-local";
+    }
+    ;
+    if (v2 instanceof InputEmail) {
+      return "email";
+    }
+    ;
+    if (v2 instanceof InputFile) {
+      return "file";
+    }
+    ;
+    if (v2 instanceof InputHidden) {
+      return "hidden";
+    }
+    ;
+    if (v2 instanceof InputImage) {
+      return "image";
+    }
+    ;
+    if (v2 instanceof InputMonth) {
+      return "month";
+    }
+    ;
+    if (v2 instanceof InputNumber) {
+      return "number";
+    }
+    ;
+    if (v2 instanceof InputPassword) {
+      return "password";
+    }
+    ;
+    if (v2 instanceof InputRadio) {
+      return "radio";
+    }
+    ;
+    if (v2 instanceof InputRange) {
+      return "range";
+    }
+    ;
+    if (v2 instanceof InputReset) {
+      return "reset";
+    }
+    ;
+    if (v2 instanceof InputSearch) {
+      return "search";
+    }
+    ;
+    if (v2 instanceof InputSubmit) {
+      return "submit";
+    }
+    ;
+    if (v2 instanceof InputTel) {
+      return "tel";
+    }
+    ;
+    if (v2 instanceof InputText) {
+      return "text";
+    }
+    ;
+    if (v2 instanceof InputTime) {
+      return "time";
+    }
+    ;
+    if (v2 instanceof InputUrl) {
+      return "url";
+    }
+    ;
+    if (v2 instanceof InputWeek) {
+      return "week";
+    }
+    ;
+    throw new Error("Failed pattern match at DOM.HTML.Indexed.InputType (line 33, column 19 - line 55, column 22): " + [v2.constructor.name]);
+  };
+
   // output/Halogen.Query.Input/index.js
   var RefUpdate = /* @__PURE__ */ function() {
     function RefUpdate2(value0, value1) {
@@ -4745,6 +4992,20 @@
   var filter2 = function(f) {
     return function(xs) {
       return xs.filter(f);
+    };
+  };
+  var partition = function(f) {
+    return function(xs) {
+      var yes = [];
+      var no = [];
+      for (var i3 = 0; i3 < xs.length; i3++) {
+        var x2 = xs[i3];
+        if (f(x2))
+          yes.push(x2);
+        else
+          no.push(x2);
+      }
+      return { yes, no };
     };
   };
   var sortByImpl = function() {
@@ -6186,6 +6447,11 @@
   var isPropString = {
     toPropValue: propFromString
   };
+  var isPropInputType = {
+    toPropValue: function($45) {
+      return propFromString(renderInputType($45));
+    }
+  };
   var handler = /* @__PURE__ */ function() {
     return Handler.create;
   }();
@@ -7219,6 +7485,9 @@
   var element2 = /* @__PURE__ */ function() {
     return element(Nothing.value);
   }();
+  var input = function(props) {
+    return element2("input")(props)([]);
+  };
   var option = /* @__PURE__ */ element2("option");
   var p = /* @__PURE__ */ element2("p");
   var select3 = /* @__PURE__ */ element2("select");
@@ -7230,6 +7499,9 @@
     return prop(dictIsProp);
   };
   var prop22 = /* @__PURE__ */ prop2(isPropString);
+  var type_17 = function(dictIsProp) {
+    return prop2(dictIsProp)("type");
+  };
   var value12 = function(dictIsProp) {
     return prop2(dictIsProp)("value");
   };
@@ -8508,6 +8780,7 @@
       });
     };
   };
+  var onChange = /* @__PURE__ */ handler2(change);
   var onMouseDown = /* @__PURE__ */ function() {
     var $27 = handler2(mousedown);
     return function($28) {
@@ -9686,12 +9959,12 @@
 
   // output/Tile/index.js
   var show4 = /* @__PURE__ */ show(showInt);
-  var append7 = /* @__PURE__ */ append(semigroupArray);
   var map23 = /* @__PURE__ */ map(functorArray);
   var fromFoldable3 = /* @__PURE__ */ fromFoldable(foldableMaybe);
-  var guard3 = /* @__PURE__ */ guard(monoidArray);
-  var guard1 = /* @__PURE__ */ guard(monoidString);
+  var guard3 = /* @__PURE__ */ guard(monoidString);
+  var guard1 = /* @__PURE__ */ guard(monoidArray);
   var elem3 = /* @__PURE__ */ elem2(eqItemType);
+  var append12 = /* @__PURE__ */ append(semigroupArray);
   var toColor = function(v2) {
     if (v2 === 1) {
       return Red.value;
@@ -9751,7 +10024,7 @@
     return function(col2) {
       return function(time3) {
         return function(dir2) {
-          return g([class_2(getColorClass(col2))])(append7([g([transform([new Rotate(rotateDir(fromMaybe(N.value)(dir2)), tileX / 2, tileY / 2)])])([getAssetImage(imAsset)])])(map23(getTime)(fromFoldable3(time3))));
+          return g([class_2(getColorClass(col2))])(cons2(g([transform([new Rotate(rotateDir(fromMaybe(N.value)(dir2)), tileX / 2, tileY / 2)])])([getAssetImage(imAsset)]))(map23(getTime)(fromFoldable3(time3))));
         };
       };
     };
@@ -9807,14 +10080,12 @@
     };
   };
   var getTile = function(v2) {
-    var childs = [svg([height8(1), width8(1), viewBox(0)(0)(tileX)(tileY)])(append7(guard3(v2.high)([getAssetImage(timeAsset)]))(append7([getTile$prime(v2.itemType)(v2.time)(v2.col)(v2.dirs)])(guard3(v2.sel)([getAssetImage(selAsset)]))))];
-    var attrs = append7([class_2("tile" + guard1(v2.top)(" top"))])(append7([transform([new Translate(toNumber(v2.pos.x), toNumber(v2.pos.y))])])(guard3(elem3(v2.itemType)(selectable))([onMouseDown(function(e) {
+    return g(cons2(class_2("tile" + guard3(v2.top)(" top")))(cons2(transform([new Translate(toNumber(v2.pos.x), toNumber(v2.pos.y))]))(guard1(elem3(v2.itemType)(selectable))([onMouseDown(function(e) {
       return new StopPropagation(toEvent(e), new Select(new Just({
         itemType: v2.itemType,
         itemIndex: v2.itemIndex
       })));
-    })])));
-    return g(attrs)(childs);
+    })]))))([svg([height8(1), width8(1), viewBox(0)(0)(tileX)(tileY)])(append12([getTile$prime(v2.itemType)(v2.time)(v2.col)(v2.dirs)])(append12(guard1(v2.sel)([getAssetImage(selAsset)]))(guard1(v2.high)([getAssetImage(timeAsset)]))))]);
   };
 
   // output/TimeLoop.Walker/index.js
@@ -9955,7 +10226,7 @@
   var map25 = /* @__PURE__ */ map(functorArray);
   var eq22 = /* @__PURE__ */ eq(eqRec1);
   var sortWith2 = /* @__PURE__ */ sortWith(/* @__PURE__ */ ordRecord()(/* @__PURE__ */ ordRecordCons(/* @__PURE__ */ ordRecordCons(ordRecordNil)()(yIsSymbol)(ordInt))()(xIsSymbol)(ordInt)));
-  var append8 = /* @__PURE__ */ append(semigroupArray);
+  var append7 = /* @__PURE__ */ append(semigroupArray);
   var mapAccumL2 = /* @__PURE__ */ mapAccumL(traversableArray);
   var join3 = /* @__PURE__ */ join(bindArray);
   var nonEmptySubsequences = function(xs) {
@@ -10017,8 +10288,8 @@
         return !elem1(v1.pos)(v2.sinks);
       });
       return {
-        accum: concatMap(move)(posGroups(consum(append8(ws)(v2.sources)))),
-        value: append8(ws)(v2.sources)
+        accum: concatMap(move)(posGroups(consum(append7(ws)(v2.sources)))),
+        value: append7(ws)(v2.sources)
       };
     };
   };
@@ -10031,7 +10302,7 @@
     var getSTBlock = function(scs) {
       return {
         univ: u2,
-        walkers: join3(getAllWalkers(getTimeline(append8(scs)(u2.emitters))(append8(u2.consumers)(map25(function(v2) {
+        walkers: join3(getAllWalkers(getTimeline(append7(scs)(u2.emitters))(append7(u2.consumers)(map25(function(v2) {
           return v2.entry;
         })(u2.portals)))))
       };
@@ -10115,7 +10386,8 @@
   };
   var eq5 = /* @__PURE__ */ eq(/* @__PURE__ */ eqMaybe(/* @__PURE__ */ eqRec4(/* @__PURE__ */ eqRowCons(/* @__PURE__ */ eqRowCons3(itemTypeIsSymbol)(eqItemType))()(itemIndexIsSymbol)(eqInt))));
   var value13 = /* @__PURE__ */ value12(isPropString);
-  var append12 = /* @__PURE__ */ append(semigroupArray);
+  var append13 = /* @__PURE__ */ append(semigroupArray);
+  var guard4 = /* @__PURE__ */ guard(monoidArray);
   var bind5 = /* @__PURE__ */ bind(bindHalogenM);
   var bindFlipped8 = /* @__PURE__ */ bindFlipped(bindHalogenM);
   var bindFlipped12 = /* @__PURE__ */ bindFlipped(bindEffect);
@@ -10152,36 +10424,36 @@
     return function(v1) {
       if (v2.itemType instanceof EntryPortal) {
         return over2(function() {
-          var $264 = ix2(v2.itemIndex)(strongFn)(choiceFn);
-          return function($265) {
-            return _initUniv2(_portals2($264(_entry2($265))));
+          var $266 = ix2(v2.itemIndex)(strongFn)(choiceFn);
+          return function($267) {
+            return _initUniv2(_portals2($266(_entry2($267))));
           };
         }())(toPos(v1));
       }
       ;
       if (v2.itemType instanceof ExitPortal) {
         return over2(function() {
-          var $266 = ix2(v2.itemIndex)(strongFn)(choiceFn);
-          return function($267) {
-            return _initUniv2(_portals2($266(_exit2($267))));
+          var $268 = ix2(v2.itemIndex)(strongFn)(choiceFn);
+          return function($269) {
+            return _initUniv2(_portals2($268(_exit2($269))));
           };
         }())(v1);
       }
       ;
       if (v2.itemType instanceof Entry) {
         return over2(function() {
-          var $268 = ix2(v2.itemIndex)(strongFn)(choiceFn);
-          return function($269) {
-            return _initUniv2(_consumers2($268($269)));
+          var $270 = ix2(v2.itemIndex)(strongFn)(choiceFn);
+          return function($271) {
+            return _initUniv2(_consumers2($270($271)));
           };
         }())(toPos(v1));
       }
       ;
       if (v2.itemType instanceof Exit) {
         return over2(function() {
-          var $270 = ix2(v2.itemIndex)(strongFn)(choiceFn);
-          return function($271) {
-            return _initUniv2(_emitters2($270($271)));
+          var $272 = ix2(v2.itemIndex)(strongFn)(choiceFn);
+          return function($273) {
+            return _initUniv2(_emitters2($272($273)));
           };
         }())(v1);
       }
@@ -10199,7 +10471,7 @@
         return ui;
       }
       ;
-      throw new Error("Failed pattern match at UI (line 327, column 17 - line 329, column 16): " + [ui.selItem.constructor.name]);
+      throw new Error("Failed pattern match at UI (line 355, column 17 - line 357, column 16): " + [ui.selItem.constructor.name]);
     };
   };
   var timer = function(dictMonadAff) {
@@ -10230,10 +10502,10 @@
     return function(is) {
       var isTop$prime = function(i1) {
         return function(i22) {
-          var $174 = eq3(i1.pos)(i22.pos);
-          if ($174) {
-            var $175 = eq23(i1.time)(mt) === eq23(i22.time)(mt);
-            if ($175) {
+          var $176 = eq3(i1.pos)(i22.pos);
+          if ($176) {
+            var $177 = eq23(i1.time)(mt) === eq23(i22.time)(mt);
+            if ($177) {
               return lessThanOrEq2(i1.itemType)(i22.itemType);
             }
             ;
@@ -10367,8 +10639,8 @@
         };
       };
       var getW = function(as) {
-        var $188 = length8(as) === 1;
-        if ($188) {
+        var $190 = length8(as) === 1;
+        if ($190) {
           return getW$prime(Walker_.value)(as);
         }
         ;
@@ -10384,8 +10656,8 @@
     };
   };
   var mouseMove = function(me) {
-    var $189 = buttons(me) === 1;
-    if ($189) {
+    var $191 = buttons(me) === 1;
+    if ($191) {
       return new Move(getPos(me));
     }
     ;
@@ -10448,9 +10720,13 @@
     ;
     return Noop.value;
   };
-  var legend2 = /* @__PURE__ */ div2([/* @__PURE__ */ class_("setup")])([/* @__PURE__ */ p([])([/* @__PURE__ */ text5("Setup")]), /* @__PURE__ */ p([])([/* @__PURE__ */ text5("Mode: "), /* @__PURE__ */ select3([/* @__PURE__ */ onValueChange(function(e) {
-    return getModeAction(e);
-  })])([/* @__PURE__ */ option([/* @__PURE__ */ value13("select")])([/* @__PURE__ */ text5("Select")]), /* @__PURE__ */ option([/* @__PURE__ */ value13("createPortal")])([/* @__PURE__ */ text5("Create Portal")]), /* @__PURE__ */ option([/* @__PURE__ */ value13("createEmitter")])([/* @__PURE__ */ text5("Create Emitter")]), /* @__PURE__ */ option([/* @__PURE__ */ value13("createConsumer")])([/* @__PURE__ */ text5("Create Consumer")])])]), /* @__PURE__ */ p([])([/* @__PURE__ */ text5("Create time portals by clicking and dragging.")])]);
+  var legend2 = /* @__PURE__ */ function() {
+    return div2([class_("setup")])([p([])([text5("Setup")]), p([])([text5("Mode: "), select3([onValueChange(function(e) {
+      return getModeAction(e);
+    })])([option([value13("select")])([text5("Select")]), option([value13("createPortal")])([text5("Create Portal")]), option([value13("createEmitter")])([text5("Create Emitter")]), option([value13("createConsumer")])([text5("Create Consumer")])])]), p([])([text5("Create time portals by clicking and dragging.")]), p([])([text5("Show invalid Universes: "), input([type_17(isPropInputType)(InputCheckbox.value), onChange(function(e) {
+      return ShowWrongTraj.value;
+    })])])]);
+  }();
   var getEmitterItems = function(emitters) {
     return function(mt) {
       return function(sel) {
@@ -10479,7 +10755,7 @@
   var getItemMap$prime = function(v2) {
     return function(mt) {
       return function(sel) {
-        return append12(getEmitterItems(v2.univ.emitters)(mt)(sel))(append12(getPortalItems(v2.univ.portals)(mt)(sel))(getWalkerItems(v2.walkers)(mt)));
+        return append13(getEmitterItems(v2.univ.emitters)(mt)(sel))(append13(getPortalItems(v2.univ.portals)(mt)(sel))(getWalkerItems(v2.walkers)(mt)));
       };
     };
   };
@@ -10513,7 +10789,7 @@
                         return new Create(mode.value0, getPos(e));
                       }
                       ;
-                      throw new Error("Failed pattern match at UI (line 152, column 22 - line 154, column 58): " + [mode.constructor.name]);
+                      throw new Error("Failed pattern match at UI (line 180, column 14 - line 182, column 50): " + [mode.constructor.name]);
                     }
                     ;
                     return new SelectSol(i3);
@@ -10548,21 +10824,25 @@
       univ: ui.initUniv,
       walkers: []
     };
-    var blocks = getAllSTBlocks(ui.initUniv);
+    var blocks = partition(isValidBlock)(getAllSTBlocks(ui.initUniv));
     var msg = function() {
-      var $215 = length4(blocks) === 0;
-      if ($215) {
+      var $217 = length4(blocks.yes) === 0;
+      if ($217) {
         return "No Solutions";
       }
       ;
-      return show5(length4(blocks)) + " Solution(s):";
+      return show5(length4(blocks.yes)) + " Solution(s):";
     }();
-    return div2([class_("game")])([div2([class_("solutions")])(cons2(text5(msg))(zipWith(function(b2) {
+    return div2([class_("game")])([div2([class_("solutions")])(cons2(div2([class_("right")])(cons2(text5(msg))(zipWith(function(b2) {
       return function(i3) {
-        return drawBlock(new Just(ui.stepItem))(ui.selItem)(i3 === ui.active)(false)(isValidBlock(b2))(ui.mode)(b2)(i3);
+        return drawBlock(new Just(ui.stepItem))(ui.selItem)(i3 === ui.active)(false)(true)(ui.mode)(b2)(i3);
       };
-    })(blocks)(range2(1)(10)))), div2([class_("play")])([function() {
-      var v2 = index2(blocks)(ui.active - 1 | 0);
+    })(blocks.yes)(range2(1)(10)))))(guard4(ui.config.showWrongTrajs)([div2([class_("wrong")])(cons2(text5("Wrong solutions: "))(zipWith(function(b2) {
+      return function(i3) {
+        return drawBlock(new Just(ui.stepItem))(ui.selItem)(i3 === ui.active)(false)(false)(ui.mode)(b2)(i3);
+      };
+    })(blocks.no)(range2(1)(10))))]))), div2([class_("play")])([function() {
+      var v2 = index2(blocks.yes)(ui.active - 1 | 0);
       if (v2 instanceof Nothing) {
         return drawBlock(Nothing.value)(ui.selItem)(false)(true)(true)(ui.mode)(init_univ)(0);
       }
@@ -10571,7 +10851,7 @@
         return drawBlock(new Just(ui.stepItem))(ui.selItem)(false)(true)(true)(ui.mode)(v2.value0)(ui.active);
       }
       ;
-      throw new Error("Failed pattern match at UI (line 77, column 11 - line 79, column 107): " + [v2.constructor.name]);
+      throw new Error("Failed pattern match at UI (line 94, column 11 - line 96, column 107): " + [v2.constructor.name]);
     }()]), legend2]);
   };
   var delItem$prime = function(v2) {
@@ -10648,7 +10928,7 @@
       return ui;
     }
     ;
-    throw new Error("Failed pattern match at UI (line 339, column 14 - line 341, column 16): " + [ui.selItem.constructor.name]);
+    throw new Error("Failed pattern match at UI (line 367, column 14 - line 369, column 16): " + [ui.selItem.constructor.name]);
   };
   var createPortal = function(p2) {
     return function(ui) {
@@ -10699,16 +10979,16 @@
       if (a3 instanceof SelectSol) {
         return trace2("Selectsol" + show5(a3.value0))(function(v2) {
           return modify_3(function(ui) {
-            var $231 = {};
-            for (var $232 in ui) {
-              if ({}.hasOwnProperty.call(ui, $232)) {
-                $231[$232] = ui[$232];
+            var $233 = {};
+            for (var $234 in ui) {
+              if ({}.hasOwnProperty.call(ui, $234)) {
+                $233[$234] = ui[$234];
               }
               ;
             }
             ;
-            $231.active = a3.value0;
-            return $231;
+            $233.active = a3.value0;
+            return $233;
           });
         });
       }
@@ -10716,32 +10996,32 @@
       if (a3 instanceof Select) {
         return trace2("Select" + show1(a3.value0))(function(v2) {
           return modify_3(function(ui) {
-            var $235 = {};
-            for (var $236 in ui) {
-              if ({}.hasOwnProperty.call(ui, $236)) {
-                $235[$236] = ui[$236];
+            var $237 = {};
+            for (var $238 in ui) {
+              if ({}.hasOwnProperty.call(ui, $238)) {
+                $237[$238] = ui[$238];
               }
               ;
             }
             ;
-            $235.selItem = a3.value0;
-            return $235;
+            $237.selItem = a3.value0;
+            return $237;
           });
         });
       }
       ;
       if (a3 instanceof Tick) {
         return modify_3(function(ui) {
-          var $239 = {};
-          for (var $240 in ui) {
-            if ({}.hasOwnProperty.call(ui, $240)) {
-              $239[$240] = ui[$240];
+          var $241 = {};
+          for (var $242 in ui) {
+            if ({}.hasOwnProperty.call(ui, $242)) {
+              $241[$242] = ui[$242];
             }
             ;
           }
           ;
-          $239.stepItem = mod2(ui.stepItem + 1 | 0)(10);
-          return $239;
+          $241.stepItem = mod2(ui.stepItem + 1 | 0)(10);
+          return $241;
         });
       }
       ;
@@ -10821,46 +11101,46 @@
       ;
       if (a3 instanceof ShowWrongTraj) {
         return modify_3(function(ui) {
-          var $257 = {};
-          for (var $258 in ui) {
-            if ({}.hasOwnProperty.call(ui, $258)) {
-              $257[$258] = ui[$258];
+          var $259 = {};
+          for (var $260 in ui) {
+            if ({}.hasOwnProperty.call(ui, $260)) {
+              $259[$260] = ui[$260];
             }
             ;
           }
           ;
-          $257.config = function() {
-            var $254 = {};
-            for (var $255 in ui.config) {
-              if ({}.hasOwnProperty.call(ui.config, $255)) {
-                $254[$255] = ui["config"][$255];
+          $259.config = function() {
+            var $256 = {};
+            for (var $257 in ui.config) {
+              if ({}.hasOwnProperty.call(ui.config, $257)) {
+                $256[$257] = ui["config"][$257];
               }
               ;
             }
             ;
-            $254.showWrongTrajs = !ui.config.showWrongTrajs;
-            return $254;
+            $256.showWrongTrajs = !ui.config.showWrongTrajs;
+            return $256;
           }();
-          return $257;
+          return $259;
         });
       }
       ;
       if (a3 instanceof Mode) {
         return modify_3(function(ui) {
-          var $260 = {};
-          for (var $261 in ui) {
-            if ({}.hasOwnProperty.call(ui, $261)) {
-              $260[$261] = ui[$261];
+          var $262 = {};
+          for (var $263 in ui) {
+            if ({}.hasOwnProperty.call(ui, $263)) {
+              $262[$263] = ui[$263];
             }
             ;
           }
           ;
-          $260.mode = a3.value0;
-          return $260;
+          $262.mode = a3.value0;
+          return $262;
         });
       }
       ;
-      throw new Error("Failed pattern match at UI (line 264, column 18 - line 288, column 50): " + [a3.constructor.name]);
+      throw new Error("Failed pattern match at UI (line 292, column 18 - line 316, column 50): " + [a3.constructor.name]);
     };
   };
   var component = function(dictMonadAff) {

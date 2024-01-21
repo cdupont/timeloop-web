@@ -4,6 +4,7 @@
   , "arrays"
   , "console"
   , "debug"
+  , "dom-indexed"
   , "effect"
   , "enums"
   , "foldable-traversable"

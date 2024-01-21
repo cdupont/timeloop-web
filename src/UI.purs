@@ -34,6 +34,7 @@ import Data.Array.NonEmpty as ANE
 import Data.Lens (over)
 import Data.Lens.Index (ix)
 import Data.Enum (upFrom)
+import Data.Monoid (guard)
 import Effect.Class (liftEffect)
 import Effect.Aff as Aff
 import Effect.Aff.Class (class MonadAff)
@@ -45,6 +46,8 @@ import TimeLoop.Types
 import TimeLoop.Search
 import TimeLoop.Walker 
 import Types
+
+import DOM.HTML.Indexed.InputType
 
 -- * Main app
 
@@ -67,23 +70,37 @@ render ui =
   HH.div 
     [ HP.class_ (ClassName "game") ] 
     [ HH.div 
-        [ HP.class_ (ClassName "solutions") ] 
-        ( cons 
-            ( HH.text msg )
-            ( zipWith (\b i -> drawBlock (Just ui.stepItem) ui.selItem (i == ui.active) false (isValidBlock b) ui.mode b i) blocks (1..10) ) 
+        [ HP.class_ (ClassName "solutions") ]
+        ( cons
+            ( HH.div
+                [ HP.class_ (ClassName "right") ] 
+                ( cons
+                    ( HH.text msg )
+                    ( zipWith (\b i -> drawBlock (Just ui.stepItem) ui.selItem (i == ui.active) false true ui.mode b i) blocks.yes (1..10) ) 
+                )
+            ) 
+            ( guard ui.config.showWrongTrajs  
+                [ HH.div 
+                    [ HP.class_ (ClassName "wrong") ] 
+                    ( cons 
+                        ( HH.text "Wrong solutions: " )
+                        ( zipWith (\b i -> drawBlock (Just ui.stepItem) ui.selItem (i == ui.active) false false ui.mode b i) blocks.no (1..10) ) 
+                    )
+                ]
+            )
         ),
       HH.div 
         [ HP.class_ (ClassName "play") ] 
-        [ case blocks !! (ui.active-1) of
+        [ case blocks.yes !! (ui.active-1) of
             Nothing -> drawBlock Nothing            ui.selItem false true true ui.mode init_univ 0
             Just b ->  drawBlock (Just ui.stepItem) ui.selItem false true true ui.mode b         ui.active
         ],
       legend
     ] 
   where
-    blocks = getAllSTBlocks $ ui.initUniv
+    blocks = partition isValidBlock $ getAllSTBlocks $ ui.initUniv
     init_univ = {univ: ui.initUniv, walkers: []}
-    msg = if length blocks == 0 then "No Solutions" else (show $ length blocks) <> " Solution(s):" 
+    msg = if length blocks.yes == 0 then "No Solutions" else (show $ length blocks.yes) <> " Solution(s):" 
 
 legend :: forall w. HH.HTML w Action
 legend = 
@@ -91,29 +108,37 @@ legend =
     [ HP.class_ (ClassName "setup") ]
     [ HH.p 
         [] 
-        [HH.text "Setup"],
+        [ HH.text "Setup" ],
       HH.p
         []
-        [HH.text "Mode: ",
-         HH.select 
-           [ HE.onValueChange $ \e -> getModeAction e]
-           [ HH.option 
-               [ HP.value "select" ]
-               [ HH.text "Select" ],
-             HH.option 
-               [ HP.value "createPortal" ]
-               [ HH.text "Create Portal" ],
-             HH.option 
-               [ HP.value "createEmitter" ]
-               [ HH.text "Create Emitter" ],
-             HH.option 
-               [ HP.value "createConsumer" ]
-               [ HH.text "Create Consumer" ]
-          ]
+        [ HH.text "Mode: ",
+          HH.select 
+            [ HE.onValueChange $ \e -> getModeAction e]
+            [ HH.option 
+                [ HP.value "select" ]
+                [ HH.text "Select" ],
+              HH.option 
+                [ HP.value "createPortal" ]
+                [ HH.text "Create Portal" ],
+              HH.option 
+                [ HP.value "createEmitter" ]
+                [ HH.text "Create Emitter" ],
+              HH.option 
+                [ HP.value "createConsumer" ]
+                [ HH.text "Create Consumer" ]
+            ]
         ],
       HH.p 
         [] 
-        [ HH.text "Create time portals by clicking and dragging."]
+        [ HH.text "Create time portals by clicking and dragging."],
+      HH.p
+        []
+        [ HH.text "Show invalid Universes: ",
+          HH.input
+            [ HP.type_ InputCheckbox,
+              HE.onChange $ \e -> ShowWrongTraj
+            ]
+        ]
        
     ]
 
@@ -135,24 +160,27 @@ drawBlock :: forall w. Maybe Time    -- A stepper time, allowing to highlight it
                     -> Int           -- universe index
                     -> HH.HTML w Action
 drawBlock mt sel active play isValid mode block i = 
-  HH.div [HP.class_ (ClassName $ "solution" <> (if active then " active" else "") <> (if isValid then " valid" else " invalid")), 
-          HP.id (solId i)]
-         [ SE.svg [SA.height 864.0,
-                   SA.width 864.0, 
-                   SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y), 
-                   HE.onMouseDown $ \e -> StopPropagation (ME.toEvent e) $ click e,
-                   HE.onMouseMove $ \e -> StopPropagation (ME.toEvent e) $ mouseMove $ spy "Mouse" e
-                  ]
-                  [
---                    SE.image [SA.x 0.0, SA.y 0.0, SA.width 11.0, SA.height 11.0, SA.href "assets/univ_background.svg"],
-                    drawItemMap (getItemMap block mt sel) lims
-                  ]
-         ] where
-           click e = if play
-                then case mode of 
-                         MSel -> Noop
-                         MCreate p -> Create p (getPos e)
-                else SelectSol i
+  HH.div 
+    [ HP.class_ (ClassName $ "solution" <> (if active then " active" else "") <> (if isValid then " valid" else " invalid")), 
+      HP.id (solId i)
+    ]
+    [ SE.svg 
+        [ SA.height 864.0,
+          SA.width 864.0, 
+          SA.viewBox (toNumber lims.first.x) (toNumber lims.first.y) (toNumber lims.last.x) (toNumber lims.last.y), 
+          HE.onMouseDown $ \e -> StopPropagation (ME.toEvent e) $ click e,
+          HE.onMouseMove $ \e -> StopPropagation (ME.toEvent e) $ mouseMove $ spy "Mouse" e
+        ]
+        [ drawItemMap (getItemMap block mt sel) lims
+        ]
+    ] 
+ where
+   click e = 
+     if play
+        then case mode of 
+                 MSel -> Noop
+                 MCreate p -> Create p (getPos e)
+        else SelectSol i
 
 solId :: Int -> String
 solId 0 = "init_univ"
